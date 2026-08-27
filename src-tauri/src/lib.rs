@@ -5,6 +5,7 @@ mod parser;
 use crate::models::{DataSourceConfig, LogEvent, ParserConfig, TimelineData};
 use chrono::{DateTime, Utc};
 use std::fs;
+use tauri_plugin_updater::UpdaterExt;
 
 // Функция для парсинга данных из JSON файла (для удобства разработки и тестирования)
 #[tauri::command]
@@ -211,6 +212,7 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|_app| {
             // Здесь можно инициализировать состояние приложения
             Ok(())

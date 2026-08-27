@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { check, type Update } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/api/app';
 import TimelineVisualizer from './components/TimelineVisualizer';
 
 interface TimelineData {
@@ -21,12 +23,22 @@ interface TimelineData {
 const allInstruments = ['EURUSD', 'GBPUSD', 'BTCUSD'];
 const allTypes = ['Corridors', 'Signals', 'Touchs', 'Risks', 'Tactics', 'Deals'];
 
+interface AppState {
+  timelineData: TimelineData | null;
+  activeInstruments: Set<string>;
+  activeTypes: Set<string>;
+  instrumentDropdownOpen: boolean;
+  typeDropdownOpen: boolean;
+  updateAvailable: Update | null;
+}
+
 function App() {
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [activeInstruments, setActiveInstruments] = useState<Set<string>>(new Set(allInstruments));
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(allTypes));
   const [instrumentDropdownOpen, setInstrumentDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState<Update | null>(null);
 
   useEffect(() => {
     loadTestData();
@@ -42,6 +54,10 @@ function App() {
       }
     };
     document.addEventListener('click', handleClickOutside);
+    
+    // Проверка обновлений при запуске приложения
+    checkForUpdates();
+    
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
@@ -84,6 +100,50 @@ function App() {
     if (activeTypes.size === allTypes.length) return 'Все';
     if (activeTypes.size === 0) return 'Ничего';
     return Array.from(activeTypes).join(', ');
+  };
+
+  // Функция для проверки и установки обновлений
+  const checkForUpdates = async () => {
+    try {
+      const update = await check();
+      if (update) {
+        console.log(`Update available: ${update.version}`);
+        setUpdateAvailable(update);
+        
+        // Запрашиваем у пользователя установку обновления
+        const shouldInstall = window.confirm(
+          `Доступна новая версия приложения (${update.version}). Установить сейчас?`
+        );
+        
+        if (shouldInstall) {
+          let downloaded = 0;
+          let contentLength = 0;
+
+          await update.downloadAndInstall((event) => {
+            switch (event.event) {
+              case 'Started':
+                contentLength = event.data.contentLength || 0;
+                console.log(`Starting download of ${contentLength} bytes...`);
+                break;
+              case 'Progress':
+                downloaded += event.data.chunkLength;
+                console.log(`Downloaded ${downloaded} from ${contentLength}`);
+                break;
+              case 'Finished':
+                console.log('Download finished, installing...');
+                break;
+            }
+          });
+
+          // Перезапускаем приложение после установки
+          await relaunch();
+        }
+      } else {
+        console.log('No updates available.');
+      }
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+    }
   };
 
   // Статистика

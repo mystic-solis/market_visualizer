@@ -14,11 +14,12 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "2.0.0", features = [] }
+tauri = { version = "2.0.0", features = ["updater"] }
 uuid = { version = "1.6", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1.10"
 tokio = { version = "1.35", features = ["full"] }
+tauri-plugin-updater = "2"
 
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
