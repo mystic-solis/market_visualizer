@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { check, type Update } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/api/app';
 import TimelineVisualizer from './components/TimelineVisualizer';
 
 interface TimelineData {
@@ -23,22 +22,12 @@ interface TimelineData {
 const allInstruments = ['EURUSD', 'GBPUSD', 'BTCUSD'];
 const allTypes = ['Corridors', 'Signals', 'Touchs', 'Risks', 'Tactics', 'Deals'];
 
-interface AppState {
-  timelineData: TimelineData | null;
-  activeInstruments: Set<string>;
-  activeTypes: Set<string>;
-  instrumentDropdownOpen: boolean;
-  typeDropdownOpen: boolean;
-  updateAvailable: Update | null;
-}
-
 function App() {
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [activeInstruments, setActiveInstruments] = useState<Set<string>>(new Set(allInstruments));
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(allTypes));
   const [instrumentDropdownOpen, setInstrumentDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState<Update | null>(null);
 
   useEffect(() => {
     loadTestData();
@@ -108,7 +97,6 @@ function App() {
       const update = await check();
       if (update) {
         console.log(`Update available: ${update.version}`);
-        setUpdateAvailable(update);
         
         // Запрашиваем у пользователя установку обновления
         const shouldInstall = window.confirm(
@@ -135,8 +123,7 @@ function App() {
             }
           });
 
-          // Перезапускаем приложение после установки
-          await relaunch();
+          alert('Обновление установлено. Пожалуйста, перезапустите приложение вручную.');
         }
       } else {
         console.log('No updates available.');
