@@ -9,6 +9,8 @@ build/
 target/
 src-tauri/target/
 src-tauri/.tauri/
+src-tauri/cargo_check_output.json
+src-tauri/gen/
 
 # IDEs
 .idea/
