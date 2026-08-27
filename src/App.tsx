@@ -21,11 +21,13 @@ interface TimelineData {
 // Состояние фильтров
 const allInstruments = ['EURUSD', 'GBPUSD', 'BTCUSD'];
 const allTypes = ['Corridors', 'Signals', 'Touchs', 'Risks', 'Tactics', 'Deals'];
+type DataSourceType = 'json' | 'kafka';
 
 function App() {
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [activeInstruments, setActiveInstruments] = useState<Set<string>>(new Set(allInstruments));
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(allTypes));
+  const [dataSource, setDataSource] = useState<DataSourceType>('json');
   const [instrumentDropdownOpen, setInstrumentDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
 
@@ -224,6 +226,25 @@ function App() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Источник данных */}
+        <div className="filter-group">
+          <label>Источник данных:</label>
+          <div className="data-source-toggle">
+            <button 
+              className={`source-btn ${dataSource === 'json' ? 'active' : ''}`}
+              onClick={() => setDataSource('json')}
+            >
+              JSON-файл
+            </button>
+            <button 
+              className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`}
+              onClick={() => setDataSource('kafka')}
+            >
+              Kafka
+            </button>
           </div>
         </div>
       </div>
