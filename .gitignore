@@ -12,6 +12,10 @@ src-tauri/.tauri/
 src-tauri/cargo_check_output.json
 src-tauri/gen/
 
+# Updater keys (secret)
+src-tauri/updater-keys/secretkey.txt
+src-tauri/updater-keys/*.txt
+
 # IDEs
 .idea/
 .vscode/

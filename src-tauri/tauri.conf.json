@@ -35,6 +35,6 @@
       "https://github.com/mystic-solis/market_visualizer/releases/download/update/{{target}}-{{arch}}/{{name}}_{{version}}_{{arch}}.json"
     ],
     "dialog": false,
-    "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVBRjJEMzNGODhCMkEwRDELKtWN0M0NTQxNzk4NDUyRjk2NTZCNEIyRTQxREVDNDMxMjg5NzRFNUQ0RAo="
+    "pubkey": "minisign<->W:QScPnGiraMnCaS3X8o8LwBoZlctDZUDC/XZKmxHUTXo="
   }
 }
