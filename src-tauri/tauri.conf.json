@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "market-visualizer",
+  "version": "0.1.0",
+  "identifier": "com.market.visualizer",
+  "build": {
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Market Visualizer",
+        "width": 1200,
+        "height": 800
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}
