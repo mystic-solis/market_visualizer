@@ -31,7 +31,7 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Install dependencies (Windows)
+      - name: Install Dependencies (Windows)
         if: matrix.platform == 'windows-latest'
         run: |
           npm install
@@ -41,10 +41,12 @@ jobs:
           npm run build
 
       - name: Build Tauri app
+        id: tauri_build
         uses: tauri-apps/tauri-action@v0.5.7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: 'Market Visualizer v__VERSION__'
@@ -52,3 +54,100 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Generate and sign update manifest
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+        run: |
+          # Получаем тег из переменных окружения
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          
+          # Скачиваем артефакты релиза для получения хешей
+          $releaseUrl = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag"
+          $release = Invoke-RestMethod -Uri $releaseUrl -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN" }
+          
+          # Ищем NSX установщик и zip
+          $nsisZip = $release.assets | Where-Object { $_.name -like '*.nsis.zip' } | Select-Object -First 1
+          $nsisExe = $release.assets | Where-Object { $_.name -like '*_x64-setup.exe' } | Select-Object -First 1
+          
+          if ($nsisZip) {
+              $downloadUrl = $nsisZip.browser_download_url
+              $fileName = $nsisZip.name
+          } elseif ($nsisExe) {
+              $downloadUrl = $nsisExe.browser_download_url
+              $fileName = $nsisExe.name
+          } else {
+              Write-Host "No NSIS artifacts found"
+              exit 1
+          }
+          
+          Write-Host "Found artifact: $fileName"
+          Write-Host "Download URL: $downloadUrl"
+          
+          # Скачиваем файл для вычисления хеша
+          $tempFile = "$env:TEMP\$fileName"
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $tempFile -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN" }
+          
+          # Вычисляем SHA-512 хеш
+          $hash = Get-FileHash -Path $tempFile -Algorithm SHA512
+          $hashBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($hash.Hash))
+          
+          # Получаем размер файла
+          $fileSize = (Get-Item $tempFile).Length
+          
+          # Создаем update.json
+          $updateJson = @{
+              version = $version
+              platforms = @{
+                  "windows-x86_64" = @{
+                      signature = ""
+                          url = $downloadUrl
+                          file_size = $fileSize
+                      }
+                  }
+              }
+          
+          # Сохраняем без подписи
+          $updateJson | ConvertTo-Json -Depth 10 | Out-File -Encoding utf8 "update.json"
+          
+          # Подписываем с помощью Python
+          $env:PYTHONPATH = ""
+          python -c "
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          from cryptography.hazmat.primitives import serialization
+          import base64, json
+          
+          # Загружаем приватный ключ
+          secret_key_b64 = '$env:TAURI_PRIVATE_KEY'
+          secret_key_bytes = base64.b64decode(secret_key_b64)
+          
+          # Создаем объект ключа
+          private_key = Ed25519PrivateKey.from_private_bytes(secret_key_bytes[:32])
+          
+          # Загружаем update.json
+          with open('update.json', 'r') as f:
+              manifest = json.load(f)
+          
+          # Подписываем каждый платформенный файл
+          for platform_name, platform_data in manifest['platforms'].items():
+              # Создаем данные для подписи (URL + размер)
+              sign_data = f\"{platform_data['url']}:{platform_data['file_size']}\"
+              signature = private_key.sign(sign_data.encode('utf-8'))
+              platform_data['signature'] = base64.b64encode(signature).decode('utf-8')
+          
+          # Сохраняем подписанный manifest
+          with open('update.json', 'w') as f:
+              json.dump(manifest, f, indent=2)
+          
+          print('update.json signed successfully')
+          "
+          
+          # Загружаем update.json в релиз
+          $uploadUrl = "https://uploads.github.com/repos/${{ github.repository }}/releases/$($release.id)/assets?name=update.json"
+          Invoke-RestMethod -Uri $uploadUrl -Method Post -ContentType 'application/json' -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN" } -InFile "update.json"
+          
+          Write-Host "update.json uploaded successfully"
