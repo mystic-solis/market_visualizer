@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
   "productName": "market-visualizer",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "identifier": "com.market.visualizer",
   "build": {
     "frontendDist": "../dist",
@@ -39,7 +39,7 @@
         "https://github.com/mystic-solis/market_visualizer/releases/latest/download/update.json"
       ],
       "dialog": false,
-      "pubkey": "minisign<->W:QScPnGiraMnCaS3X8o8LwBoZlctDZUDC/XZKmxHUTXo="
+      "pubkey": "minisign<->W:RVWqgbSImBNU15EEHCL6xfISVJcWpy5+9S1tymyBxNw="
     }
   }
 }
