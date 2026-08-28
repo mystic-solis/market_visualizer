@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
 interface Event {
@@ -54,12 +54,12 @@ interface TimelineVisualizerProps {
 }
 
 const colors: Record<string, string> = {
-  CR: '#2563eb',   // синий
-  SG: '#16a34a',   // зеленый
-  TC: '#dc2626',   // красный
-  RK: '#f97316',   // оранжевый
-  TA: '#8b5cf6',   // фиолетовый
-  DEAL: '#facc15'  // желтый
+  CR: '#2563eb',
+  SG: '#16a34a',
+  TC: '#dc2626',
+  RK: '#f97316',
+  TA: '#8b5cf6',
+  DEAL: '#facc15'
 };
 
 function getEventTypeColor(type: string): string {
@@ -81,15 +81,16 @@ function getTypeLabel(eventType: string): string {
 const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeInstruments, activeTypes }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [svgHeight, setSvgHeight] = useState(500);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || data.events.length === 0) return;
 
     // Фильтрация данных
-    const filteredEvents = data.events.filter(e => 
+    const filteredEvents = data.events.filter(e =>
       activeInstruments.has(e.instrument) && activeTypes.has(getTypeLabel(e.event_type))
     );
-    const filteredDeals = data.deals.filter(e => 
+    const filteredDeals = data.deals.filter(e =>
       activeInstruments.has(e.instrument) && activeTypes.has('Deals')
     );
 
@@ -97,24 +98,14 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     d3.select(svgRef.current).selectAll('*').remove();
 
     const containerWidth = containerRef.current.clientWidth || 1200;
-    const height = 500;
-    
-    const svg = d3.select(svgRef.current)
-      .attr('viewBox', `0 0 ${containerWidth} ${height}`)
-      .style('width', '100%')
-      .style('height', 'auto');
 
     const margin = { top: 40, right: 40, bottom: 50, left: 80 };
     const innerWidth = containerWidth - margin.left - margin.right;
 
     // Получаем временной диапазон
-    let allTimes: Date[] = [];
-    filteredEvents.forEach(e => {
-      allTimes.push(new Date(e.timestamp));
-    });
-    filteredDeals.forEach(e => {
-      allTimes.push(new Date(e.timestamp));
-    });
+    const allTimes: Date[] = [];
+    filteredEvents.forEach(e => allTimes.push(new Date(e.timestamp)));
+    filteredDeals.forEach(e => allTimes.push(new Date(e.timestamp)));
 
     if (allTimes.length === 0) return;
 
@@ -131,19 +122,14 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
     // Создаем строки для коридоров и сделок
     const rows: RowData[] = [];
-    
+
     data.corridor_groups.forEach(c => {
-      // Находим события для этого коридора из отфильтрованных
       const corridorEvents = filteredEvents.filter(e => e.corridor_id === c.corridor_id);
       if (corridorEvents.length > 0) {
-        rows.push({ 
-          type: 'corridor', 
-          corridorId: c.corridor_id, 
-          events: corridorEvents 
-        });
+        rows.push({ type: 'corridor', corridorId: c.corridor_id, events: corridorEvents });
       }
     });
-    
+
     if (filteredDeals.length > 0) {
       rows.push({ type: 'deals', events: filteredDeals });
     }
@@ -151,6 +137,13 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     const rowHeight = 60;
     const totalRows = rows.length;
     const totalHeight = totalRows * rowHeight;
+    const calculatedHeight = Math.max(500, totalHeight + margin.top + margin.bottom + 60);
+    setSvgHeight(calculatedHeight);
+
+    const svg = d3.select(svgRef.current)
+      .attr('viewBox', `0 0 ${containerWidth} ${calculatedHeight}`)
+      .style('width', '100%')
+      .style('height', 'auto');
 
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -160,7 +153,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       .ticks(d3.timeMinute.every(10))
       .tickFormat(d3.timeFormat('%H:%M'))
       .tickSizeOuter(0);
-      
+
     g.append('g')
       .attr('class', 'axis')
       .attr('transform', `translate(0, ${totalHeight + 10})`)
@@ -211,14 +204,14 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       if (currentTooltip) {
         currentTooltip.innerHTML = details;
         currentTooltip.classList.remove('hidden');
-        
+
         const container = document.getElementById('vis-container');
         if (container) {
           const [tx, ty] = d3.pointer(event, container);
           currentTooltip.style.left = (tx + 12) + 'px';
           currentTooltip.style.top = (ty - 40) + 'px';
         }
-        
+
         hoveredElement = element;
         hoveredElement.attr('stroke', '#000').attr('stroke-width', 2);
       }
@@ -246,7 +239,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
       const firstX = xScale(new Date(events[0].timestamp)) ?? 0;
       const lastX = xScale(new Date(events[events.length-1].timestamp)) ?? 0;
-      
+
       group.append('line')
         .attr('class', 'corridor-line')
         .attr('x1', firstX)
@@ -260,7 +253,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         const x1 = xScale(fromTime) ?? 0;
         const x2 = xScale(toTime) ?? 0;
         const y = rowHeight/2;
-        
+
         group.append('line')
           .attr('class', 'connection-line')
           .attr('x1', x1)
@@ -344,7 +337,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
       const firstX = xScale(new Date(events[0].timestamp)) ?? 0;
       const lastX = xScale(new Date(events[events.length-1].timestamp)) ?? 0;
-      
+
       group.append('line')
         .attr('class', 'corridor-line')
         .attr('x1', firstX)
@@ -360,14 +353,14 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         const y = rowHeight/2;
         const color = colors.DEAL || '#facc15';
         const size = 8;
-        
+
         const points = [
           [x, y - size],
           [x + size, y],
           [x, y + size],
           [x - size, y]
         ].map(p => p.join(',')).join(' ');
-        
+
         const diamondSel = group.append('polygon')
           .attr('class', 'deal-diamond')
           .attr('points', points)
@@ -409,9 +402,8 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
   }, [data, activeInstruments, activeTypes]);
 
   return (
-    <div className="vis-container" id="vis-container" ref={containerRef}>
-      <div id="tooltip" className="tooltip hidden"></div>
-      <svg id="timeline-svg" width="100%" height="500" ref={svgRef}></svg>
+    <div className="vis-content" ref={containerRef}>
+      <svg id="timeline-svg" width="100%" height={svgHeight} ref={svgRef}></svg>
     </div>
   );
 };

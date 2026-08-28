@@ -209,6 +209,11 @@ body {
   margin-top: 8px;
 }
 
+.vis-content {
+  position: relative;
+  min-width: 100%;
+}
+
 .vis-container svg {
   display: block;
   width: 100%;

@@ -258,7 +258,9 @@ function App() {
             activeTypes={activeTypes}
           />
         ) : (
-          <div className="loading-state">Загрузка данных...</div>
+          <div className="loading-state">
+            {dataSource === 'kafka' ? 'Подключение к Kafka...' : 'Загрузка данных...'}
+          </div>
         )}
       </main>
 
