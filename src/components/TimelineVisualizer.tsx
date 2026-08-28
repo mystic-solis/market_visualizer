@@ -47,8 +47,10 @@ const colors: Record<string, string> = {
 };
 
 const ROW_HEIGHT = 60;
+const HEADER_HEIGHT = 50;
 const MIN_TIME_ZOOM = 0.5;
 const MAX_TIME_ZOOM = 50;
+const LABEL_WIDTH = 80;
 
 function getEventTypeColor(type: string): string {
   return colors[type] || '#888';
@@ -60,11 +62,12 @@ function getTypeLabel(eventType: string): string {
 
 const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeInstruments, activeTypes, brushDomain }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const axisRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 1200, height: 400 });
   const [timeZoom, setTimeZoom] = useState(1);
-  const [panMs, setPanMs] = useState(0);        // horizontal pan in milliseconds
-  const [panYPx, setPanYPx] = useState(0);       // vertical pan in pixels
+  const [panMs, setPanMs] = useState(0);
+  const [panYPx, setPanYPx] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, startPanMs: 0, startPanYPx: 0 });
 
@@ -125,8 +128,9 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
   }
 
   const baseTimeRange = maxTime.getTime() - minTime.getTime();
-  const margin = { top: 40, right: 40, bottom: 50, left: 80 };
-  const innerWidth = containerSize.width - margin.left - margin.right;
+  const margin = { top: 0, right: 40, bottom: 0, left: 0 };
+  const graphWidth = containerSize.width - LABEL_WIDTH;
+  const innerWidth = graphWidth - margin.right - margin.left;
 
   // Calculate visible time range based on zoom
   const visibleTimeRange = baseTimeRange / timeZoom;
@@ -155,7 +159,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
   }, [baseTimeRange, timeZoom]);
 
   const clampPanYPx = useCallback((y: number) => {
-    const maxY = Math.max(0, svgHeight - containerSize.height);
+    const maxY = Math.max(0, svgHeight - containerSize.height + HEADER_HEIGHT);
     return Math.max(-maxY, Math.min(maxY, y));
   }, [svgHeight, containerSize.height]);
 
@@ -168,15 +172,12 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       e.preventDefault();
       
       if (e.shiftKey) {
-        // Horizontal pan with Shift+wheel
         const pixelsPerMs = innerWidth / visibleTimeRange;
         const msDelta = -e.deltaY / pixelsPerMs;
         setPanMs(prev => clampPanMs(prev + msDelta));
       } else if (e.ctrlKey) {
-        // Vertical pan with Ctrl+wheel
         setPanYPx(prev => clampPanYPx(prev - e.deltaY));
       } else {
-        // Horizontal zoom (centered on viewport center)
         const zoomFactor = e.deltaY > 0 ? 0.85 : 1.18;
         setTimeZoom(prev => Math.max(MIN_TIME_ZOOM, Math.min(MAX_TIME_ZOOM, prev * zoomFactor)));
       }
@@ -192,7 +193,6 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       const dx = e.clientX - dragRef.current.startX;
       const dy = e.clientY - dragRef.current.startY;
       
-      // Convert pixel delta to time delta for horizontal
       const pixelsPerMs = innerWidth / visibleTimeRange;
       const msDelta = -dx / pixelsPerMs;
       
@@ -221,17 +221,32 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     setIsDragging(true);
   }, [panMs, panYPx]);
 
-  // Draw SVG
+  // Draw axis SVG (sticky header)
+  useEffect(() => {
+    if (!axisRef.current) return;
+    d3.select(axisRef.current).selectAll('*').remove();
+    
+    const svg = d3.select(axisRef.current)
+      .attr('width', graphWidth)
+      .attr('height', HEADER_HEIGHT)
+      .style('display', 'block');
+    
+    svg.append('g')
+      .attr('transform', `translate(${margin.left}, 0)`)
+      .call(d3.axisBottom(xScale).ticks(Math.floor(innerWidth / 80)).tickFormat(d3.timeFormat('%H:%M')).tickSizeOuter(0));
+  }, [graphWidth, margin.left, xScale, innerWidth]);
+
+  // Draw main SVG
   useEffect(() => {
     if (!svgRef.current || rows.length === 0) return;
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
-      .attr('width', containerSize.width)
+      .attr('width', graphWidth)
       .attr('height', svgHeight)
       .style('display', 'block');
 
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},0)`);
 
     // Grid lines
     const gridLines = g.append('g').attr('class', 'grid');
@@ -239,14 +254,9 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       const x = xScale(t) ?? 0;
       gridLines.append('line')
         .attr('x1', x).attr('x2', x)
-        .attr('y1', 0).attr('y2', svgHeight - margin.top - margin.bottom)
+        .attr('y1', 0).attr('y2', svgHeight)
         .attr('stroke', '#e9edf2').attr('stroke-dasharray', '3,3');
     });
-
-    // X axis
-    g.append('g').attr('class', 'axis')
-      .attr('transform', `translate(0, ${svgHeight - margin.top - margin.bottom})`)
-      .call(d3.axisBottom(xScale).ticks(Math.floor(innerWidth / 80)).tickFormat(d3.timeFormat('%H:%M')));
 
     // Horizontal row lines
     const hGridLines = g.append('g').attr('class', 'h-grid');
@@ -303,7 +313,6 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     rowGroups.filter((d: RowData) => d.type === 'corridor').each(function(this: any, d: RowData) {
       const group = d3.select(this);
       const events = d.events;
-      const corridorId = d.corridorId || '';
       const y = ROW_HEIGHT / 2;
       const circleR = 7;
 
@@ -320,9 +329,6 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
           .attr('x1', x1).attr('y1', y).attr('x2', x2).attr('y2', y)
           .attr('marker-end', 'url(#arrowhead)');
       }
-
-      group.append('text').attr('class', 'corridor-label')
-        .attr('x', -10).attr('y', y + 5).attr('text-anchor', 'end').text(corridorId);
 
       events.forEach((ev: Event) => {
         const time = new Date(ev.timestamp);
@@ -361,10 +367,6 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       const events = d.events;
       const y = ROW_HEIGHT / 2;
       const diamondSize = 8;
-
-      group.append('text').attr('class', 'corridor-label')
-        .attr('x', -10).attr('y', y + 5).attr('text-anchor', 'end')
-        .text('DEALS').style('fill', colors.Deals);
 
       const firstX = xScale(new Date(events[0].timestamp)) ?? 0;
       const lastX = xScale(new Date(events[events.length - 1].timestamp)) ?? 0;
@@ -406,7 +408,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       });
     });
 
-  }, [data, activeInstruments, activeTypes, brushDomain, containerSize, timeZoom, panMs, svgHeight, rows, minTime, maxTime, baseTimeRange, viewMinTime, viewMaxTime, innerWidth, margin.left, margin.top, margin.bottom, colors.Deals]);
+  }, [data, activeInstruments, activeTypes, brushDomain, containerSize, timeZoom, panMs, svgHeight, rows, minTime, maxTime, baseTimeRange, viewMinTime, viewMaxTime, innerWidth, margin.left, colors.Deals, graphWidth]);
 
   return (
     <div 
@@ -416,15 +418,99 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         overflow: 'hidden',
         cursor: isDragging ? 'grabbing' : 'grab',
         position: 'relative',
-        userSelect: 'none'
+        userSelect: 'none',
+        display: 'flex',
+        flexDirection: 'column'
       }}
       onMouseDown={handleMouseDown}
     >
+      {/* Main content area */}
       <div style={{
-        transform: `translateY(${panYPx}px)`,
-        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+        flex: 1,
+        display: 'flex',
+        overflow: 'hidden',
+        position: 'relative'
       }}>
-        <svg ref={svgRef} id="timeline-svg" style={{ touchAction: 'none' }}></svg>
+        {/* Sticky labels column */}
+        <div style={{
+          width: LABEL_WIDTH,
+          flexShrink: 0,
+          background: '#f8fafc',
+          borderRight: '1px solid #e2e8f0',
+          zIndex: 10,
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          {/* Labels - move vertically with pan */}
+          <div style={{
+            transform: `translateY(${panYPx}px)`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+          }}>
+            {rows.map((r, i) => (
+              <div key={i} style={{
+                height: ROW_HEIGHT,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                paddingRight: 10,
+                fontSize: 12,
+                fontWeight: 600,
+                color: r.type === 'deals' ? colors.Deals : '#1e293b',
+                borderBottom: '1px solid #f1f5f9',
+                background: '#f8fafc'
+              }}>
+                {r.type === 'deals' ? 'DEALS' : r.corridorId}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Graph area - moves vertically */}
+        <div style={{
+          flex: 1,
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div style={{
+            transform: `translateY(${panYPx}px)`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+          }}>
+            <svg ref={svgRef} id="timeline-svg" style={{ touchAction: 'none' }}></svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky footer row with time axis and corner */}
+      <div style={{
+        display: 'flex',
+        flexShrink: 0,
+        height: HEADER_HEIGHT,
+        background: '#f8fafc',
+        borderTop: '2px solid #e2e8f0',
+        zIndex: 20
+      }}>
+        {/* Corner cell */}
+        <div style={{
+          width: LABEL_WIDTH,
+          flexShrink: 0,
+          background: '#f1f5f9',
+          borderRight: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 10,
+          fontWeight: 600,
+          color: '#94a3b8'
+        }}>TIME</div>
+        {/* Time axis */}
+        <div style={{
+          flex: 1,
+          overflow: 'hidden',
+          position: 'relative',
+          background: '#f8fafc'
+        }}>
+          <svg ref={axisRef} style={{ display: 'block' }}></svg>
+        </div>
       </div>
       
       {/* Zoom controls */}
