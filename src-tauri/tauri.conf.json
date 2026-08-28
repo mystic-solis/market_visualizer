@@ -36,7 +36,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/mystic-solis/market_visualizer/releases/download/{{tag}}/update.json"
+        "https://github.com/mystic-solis/market_visualizer/releases/latest/download/update.json"
       ],
       "dialog": false,
       "pubkey": "minisign<->W:QScPnGiraMnCaS3X8o8LwBoZlctDZUDC/XZKmxHUTXo="

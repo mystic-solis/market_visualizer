@@ -309,6 +309,33 @@ body {
   font-size: 13px;
   color: #94a3b8;
   text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer-version {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.check-updates-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.check-updates-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #475569;
 }
 
 .loading-state {

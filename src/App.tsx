@@ -96,7 +96,9 @@ function App() {
   // Функция для проверки и установки обновлений
   const checkForUpdates = async () => {
     try {
+      console.log('Checking for updates...');
       const update = await check();
+      console.log('Update check result:', update);
       if (update) {
         console.log(`Update available: ${update.version}`);
         
@@ -139,6 +141,7 @@ function App() {
   const totalEvents = timelineData?.stats.total_events || 0;
   const totalCorridors = timelineData?.stats.total_corridors || 0;
   const totalDeals = timelineData?.stats.total_deals || 0;
+  const currentVersion = '0.1.8';
 
   return (
     <div className="app-container">
@@ -264,7 +267,11 @@ function App() {
         )}
       </main>
 
-      <footer className="footer">Наведите на событие для деталей · Клик для информации</footer>
+      <footer className="footer">
+        <span>Наведите на событие для деталей · Клик для информации</span>
+        <span className="footer-version">v{currentVersion}</span>
+        <button className="check-updates-btn" onClick={checkForUpdates}>Проверить обновления</button>
+      </footer>
     </div>
   );
 }
