@@ -42,7 +42,7 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
     // Создаем базовое время
     let base_time = DateTime::<Utc>::from_timestamp(1724265600, 0).unwrap_or_else(Utc::now); // Пример: 21 августа 2026
 
-    // Генерируем коридоры (больше данных для тестирования)
+    // Генерируем коридоры (много данных для тестирования переполнения)
     let corridor_events = vec![
         // CR-001 - EURUSD
         ("CR-001".to_string(), EventType::Corridors, Instrument::EURUSD, 15, "1.1245"),
@@ -87,6 +87,46 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
         ("CR-010".to_string(), EventType::Corridors, Instrument::EURUSD, 250, "1.1285"),
         ("CR-010".to_string(), EventType::Risks, Instrument::EURUSD, 265, "1.1290"),
         ("CR-010".to_string(), EventType::Tactics, Instrument::EURUSD, 280, "1.1288"),
+        // CR-011 - GBPUSD
+        ("CR-011".to_string(), EventType::Corridors, Instrument::GBPUSD, 270, "1.3150"),
+        ("CR-011".to_string(), EventType::Signals, Instrument::GBPUSD, 285, "1.3155"),
+        ("CR-011".to_string(), EventType::Touchs, Instrument::GBPUSD, 300, "1.3152"),
+        // CR-012 - BTCUSD
+        ("CR-012".to_string(), EventType::Corridors, Instrument::BTCUSD, 290, "68900"),
+        ("CR-012".to_string(), EventType::Risks, Instrument::BTCUSD, 305, "69000"),
+        ("CR-012".to_string(), EventType::Signals, Instrument::BTCUSD, 320, "68850"),
+        // CR-013 - EURUSD
+        ("CR-013".to_string(), EventType::Corridors, Instrument::EURUSD, 310, "1.1295"),
+        ("CR-013".to_string(), EventType::Tactics, Instrument::EURUSD, 325, "1.1300"),
+        ("CR-013".to_string(), EventType::Touchs, Instrument::EURUSD, 340, "1.1298"),
+        // CR-014 - GBPUSD
+        ("CR-014".to_string(), EventType::Corridors, Instrument::GBPUSD, 330, "1.3160"),
+        ("CR-014".to_string(), EventType::Signals, Instrument::GBPUSD, 345, "1.3165"),
+        ("CR-014".to_string(), EventType::Risks, Instrument::GBPUSD, 360, "1.3162"),
+        // CR-015 - BTCUSD
+        ("CR-015".to_string(), EventType::Corridors, Instrument::BTCUSD, 350, "69100"),
+        ("CR-015".to_string(), EventType::Touchs, Instrument::BTCUSD, 365, "69200"),
+        ("CR-015".to_string(), EventType::Signals, Instrument::BTCUSD, 380, "69050"),
+        // CR-016 - EURUSD
+        ("CR-016".to_string(), EventType::Corridors, Instrument::EURUSD, 370, "1.1305"),
+        ("CR-016".to_string(), EventType::Risks, Instrument::EURUSD, 385, "1.1310"),
+        ("CR-016".to_string(), EventType::Tactics, Instrument::EURUSD, 400, "1.1308"),
+        // CR-017 - GBPUSD
+        ("CR-017".to_string(), EventType::Corridors, Instrument::GBPUSD, 390, "1.3170"),
+        ("CR-017".to_string(), EventType::Signals, Instrument::GBPUSD, 405, "1.3175"),
+        ("CR-017".to_string(), EventType::Touchs, Instrument::GBPUSD, 420, "1.3172"),
+        // CR-018 - BTCUSD
+        ("CR-018".to_string(), EventType::Corridors, Instrument::BTCUSD, 410, "69300"),
+        ("CR-018".to_string(), EventType::Risks, Instrument::BTCUSD, 425, "69400"),
+        ("CR-018".to_string(), EventType::Signals, Instrument::BTCUSD, 440, "69250"),
+        // CR-019 - EURUSD
+        ("CR-019".to_string(), EventType::Corridors, Instrument::EURUSD, 430, "1.1315"),
+        ("CR-019".to_string(), EventType::Tactics, Instrument::EURUSD, 445, "1.1320"),
+        ("CR-019".to_string(), EventType::Touchs, Instrument::EURUSD, 460, "1.1318"),
+        // CR-020 - GBPUSD
+        ("CR-020".to_string(), EventType::Corridors, Instrument::GBPUSD, 450, "1.3180"),
+        ("CR-020".to_string(), EventType::Signals, Instrument::GBPUSD, 465, "1.3185"),
+        ("CR-020".to_string(), EventType::Risks, Instrument::GBPUSD, 480, "1.3182"),
     ];
 
     let mut events: Vec<LogEvent> = Vec::new();
@@ -111,7 +151,7 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
         });
     }
 
-    // Генерируем сделки
+    // Генерируем сделки (много данных для тестирования)
     let deal_events = vec![
         (EventType::Deals, Instrument::EURUSD, 20, "1.1240"),
         (EventType::Deals, Instrument::GBPUSD, 35, "1.3115"),
@@ -127,6 +167,16 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
         (EventType::Deals, Instrument::GBPUSD, 215, "1.3138"),
         (EventType::Deals, Instrument::BTCUSD, 255, "68750"),
         (EventType::Deals, Instrument::EURUSD, 270, "1.1282"),
+        (EventType::Deals, Instrument::GBPUSD, 295, "1.3148"),
+        (EventType::Deals, Instrument::BTCUSD, 315, "68950"),
+        (EventType::Deals, Instrument::EURUSD, 335, "1.1292"),
+        (EventType::Deals, Instrument::GBPUSD, 355, "1.3158"),
+        (EventType::Deals, Instrument::BTCUSD, 375, "69150"),
+        (EventType::Deals, Instrument::EURUSD, 395, "1.1302"),
+        (EventType::Deals, Instrument::GBPUSD, 415, "1.3168"),
+        (EventType::Deals, Instrument::BTCUSD, 435, "69350"),
+        (EventType::Deals, Instrument::EURUSD, 455, "1.1312"),
+        (EventType::Deals, Instrument::GBPUSD, 475, "1.3178"),
     ];
 
     for (i, (event_type, instrument, time_offset, value)) in
