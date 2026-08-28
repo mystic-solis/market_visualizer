@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { check } from '@tauri-apps/plugin-updater';
 import TimelineVisualizer from './components/TimelineVisualizer';
 
 interface TimelineData {
@@ -33,9 +32,6 @@ function App() {
   const [instrumentDropdownOpen, setInstrumentDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'error'>('idle');
-  const [updateInfo, setUpdateInfo] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<string>('');
 
   useEffect(() => {
     loadTestData();
@@ -98,49 +94,6 @@ function App() {
     if (activeTypes.size === allTypes.length) return 'Все';
     if (activeTypes.size === 0) return 'Ничего';
     return Array.from(activeTypes).join(', ');
-  };
-
-  // Функция для проверки и установки обновлений
-  const checkForUpdates = async () => {
-    setUpdateStatus('checking');
-    setUpdateInfo(null);
-    setDownloadProgress('');
-    try {
-      const update = await check();
-      if (update) {
-        setUpdateStatus('available');
-        setUpdateInfo(`Доступна версия ${update.version}`);
-        const shouldInstall = window.confirm(`Доступна новая версия ${update.version}. Установить сейчас?`);
-        if (shouldInstall) {
-          setUpdateStatus('downloading');
-          let downloaded = 0;
-          let contentLength = 0;
-          await update.downloadAndInstall((event) => {
-            switch (event.event) {
-              case 'Started':
-                contentLength = event.data.contentLength || 0;
-                setDownloadProgress(`Загрузка ${contentLength} байт...`);
-                break;
-              case 'Progress':
-                downloaded += event.data.chunkLength;
-                setDownloadProgress(`Загружено ${downloaded} / ${contentLength} (${Math.round((downloaded / contentLength) * 100)}%)`);
-                break;
-              case 'Finished':
-                setDownloadProgress('Установка...');
-                break;
-            }
-          });
-          alert('Обновление установлено. Перезапустите приложение.');
-          setUpdateStatus('idle');
-        }
-      } else {
-        setUpdateStatus('none');
-        setUpdateInfo('Обновлений нет');
-      }
-    } catch (error) {
-      setUpdateStatus('error');
-      setUpdateInfo(`Ошибка: ${error}`);
-    }
   };
 
   // Статистика
@@ -310,29 +263,10 @@ function App() {
                 <p className="setting-hint">Экспортирует все текущие данные (события, коридоры, сделки) в JSON файл</p>
               </div>
               <div className="setting-item">
-                <label>Обновления:</label>
-                <div className="update-section">
-                  <button 
-                    className="export-btn" 
-                    onClick={checkForUpdates}
-                    disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
-                  >
-                    {updateStatus === 'checking' ? '⏳ Проверка...' : 
-                     updateStatus === 'downloading' ? `📥 ${downloadProgress || 'Загрузка...'}` :
-                     '🔄 Проверить обновления'}
-                  </button>
-                  {updateInfo && (
-                    <span className={`update-info update-${updateStatus}`}>
-                      {updateInfo}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="setting-item">
                 <label>О приложении:</label>
                 <div className="about-info">
                   <p><strong>Market Visualizer</strong></p>
-                  <p>Версия: 0.1.13</p>
+                  <p>Версия: 0.1.14</p>
                   <p>Платформа: Tauri + React + D3.js</p>
                 </div>
               </div>
