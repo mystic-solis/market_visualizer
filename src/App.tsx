@@ -263,7 +263,7 @@ function App() {
                 <label>О приложении:</label>
                 <div className="about-info">
                   <p><strong>Market Visualizer</strong></p>
-                  <p>Версия: 0.1.10</p>
+                  <p>Версия: 0.1.11</p>
                   <p>Платформа: Tauri + React + D3.js</p>
                 </div>
               </div>
