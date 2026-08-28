@@ -31,7 +31,15 @@ function ColorPicker({ label, value, onChange }: { label: string; value: string;
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{ width: 32, height: 24, border: 'none', borderRadius: 4, cursor: 'pointer' }}
+        style={{ 
+          width: 28, 
+          height: 28, 
+          border: '2px solid var(--border-primary)', 
+          borderRadius: '50%', 
+          cursor: 'pointer',
+          padding: 0,
+          background: 'none'
+        }}
       />
       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
     </div>
@@ -55,7 +63,16 @@ function SettingsModal({
   updateColor: (key: string, value: string) => void;
   resetToDefaults: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<'data' | 'general' | 'chart' | 'about'>('data');
+  
   if (!isOpen) return null;
+
+  const tabs = [
+    { id: 'data' as const, label: 'Данные' },
+    { id: 'general' as const, label: 'Общее' },
+    { id: 'chart' as const, label: 'Графика' },
+    { id: 'about' as const, label: 'О приложении' },
+  ];
 
   const eventColorKeys = ['Corridors', 'Signals', 'Touchs', 'Risks', 'Tactics', 'Deals'];
   const bgColorKeys = [
@@ -84,107 +101,164 @@ function SettingsModal({
     { key: 'arrowColor', label: 'Стрелки' },
   ];
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '80vh', overflow: 'auto' }}>
-        <div className="modal-header">
-          <h2>⚙️ Настройки</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <div className="setting-item">
-            <label>Источник данных:</label>
-            <div className="data-source-toggle">
-              <button className={`source-btn ${dataSource === 'json' ? 'active' : ''}`} onClick={() => setDataSource('json')}>📄 JSON-файл</button>
-              <button className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`} onClick={() => setDataSource('kafka')}>🔌 Kafka</button>
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'data':
+        return (
+          <>
+            <div className="setting-item">
+              <label>Источник данных:</label>
+              <div className="data-source-toggle">
+                <button className={`source-btn ${dataSource === 'json' ? 'active' : ''}`} onClick={() => setDataSource('json')}>📄 JSON-файл</button>
+                <button className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`} onClick={() => setDataSource('kafka')}>🔌 Kafka</button>
+              </div>
+              <p className="setting-hint">Переключение между файлом и потоком данных</p>
             </div>
-            <p className="setting-hint">Переключение между файлом и потоком данных</p>
-          </div>
-
-          <div className="setting-item">
-            <label>Цвета событий:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
-              {eventColorKeys.map(key => (
-                <ColorPicker key={key} label={key} value={colors[key]} onChange={(v) => updateColor(key, v)} />
-              ))}
+            <div className="setting-item">
+              <label>Экспорт данных:</label>
+              <button className="export-btn">📥 Экспорт в JSON</button>
+              <p className="setting-hint">Экспортирует все текущие данные (события, коридоры, сделки) в JSON файл</p>
             </div>
-          </div>
-
-          <div className="setting-item">
-            <label>Фоновые цвета:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-              {bgColorKeys.map(({ key, label }) => (
-                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
-              ))}
+          </>
+        );
+      
+      case 'general':
+        return (
+          <>
+            <div className="setting-item">
+              <label>Цвета событий:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
+                {eventColorKeys.map(key => (
+                  <ColorPicker key={key} label={key} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="setting-item">
-            <label>Цвета текста:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
-              {textColorKeys.map(({ key, label }) => (
-                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
-              ))}
+            <div className="setting-item">
+              <label>Акцентные цвета:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                {accentColorKeys.map(({ key, label }) => (
+                  <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="setting-item">
-            <label>Цвета границ:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-              {borderColorKeys.map(({ key, label }) => (
-                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
-              ))}
+            <div className="setting-item">
+              <label>Фоновые цвета:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                {bgColorKeys.map(({ key, label }) => (
+                  <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="setting-item">
-            <label>Акцентные цвета:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-              {accentColorKeys.map(({ key, label }) => (
-                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
-              ))}
+            <div className="setting-item">
+              <label>Цвета текста:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
+                {textColorKeys.map(({ key, label }) => (
+                  <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="setting-item">
-            <label>Цвета графика:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
-              {chartColorKeys.map(({ key, label }) => (
-                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
-              ))}
+            <div className="setting-item">
+              <label>Цвета границ:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                {borderColorKeys.map(({ key, label }) => (
+                  <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+                ))}
+              </div>
             </div>
-          </div>
-
-          <button 
-            onClick={resetToDefaults}
-            style={{
-              marginTop: 8,
-              padding: '6px 16px',
-              fontSize: 12,
-              border: '1px solid var(--border-primary)',
-              borderRadius: 4,
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer'
-            }}
-          >
-            Сбросить все цвета к стандартным
-          </button>
-
-          <div className="setting-item" style={{ marginTop: 20 }}>
-            <label>Экспорт данных:</label>
-            <button className="export-btn">📥 Экспорт в JSON</button>
-            <p className="setting-hint">Экспортирует все текущие данные (события, коридоры, сделки) в JSON файл</p>
-          </div>
-
+            <button 
+              onClick={resetToDefaults}
+              style={{
+                marginTop: 8,
+                padding: '6px 16px',
+                fontSize: 12,
+                border: '1px solid var(--border-primary)',
+                borderRadius: 4,
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              Сбросить все цвета к стандартным
+            </button>
+          </>
+        );
+      
+      case 'chart':
+        return (
+          <>
+            <div className="setting-item">
+              <label>Цвета графика:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
+                {chartColorKeys.map(({ key, label }) => (
+                  <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+                ))}
+              </div>
+            </div>
+            <div className="setting-item">
+              <label>Цвета границ:</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+                {borderColorKeys.map(({ key, label }) => (
+                  <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+                ))}
+              </div>
+            </div>
+          </>
+        );
+      
+      case 'about':
+        return (
           <div className="setting-item">
             <label>О приложении:</label>
             <div className="about-info">
               <p><strong>Market Visualizer</strong></p>
               <p>Версия: 0.1.16</p>
               <p>Платформа: Tauri + React + D3.js</p>
+              <p>Дата сборки: {new Date().toLocaleDateString()}</p>
             </div>
           </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="modal-header">
+          <h2>⚙️ Настройки</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        
+        {/* Tabs */}
+        <div style={{ 
+          display: 'flex', 
+          borderBottom: '1px solid var(--border-primary)',
+          background: 'var(--bg-secondary)'
+        }}>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '10px 20px',
+                border: 'none',
+                background: activeTab === tab.id ? 'var(--accent)' : 'transparent',
+                color: activeTab === tab.id ? 'white' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: activeTab === tab.id ? 600 : 400,
+                transition: 'all 0.2s'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        
+        <div className="modal-body" style={{ overflow: 'auto', flex: 1 }}>
+          {renderTabContent()}
         </div>
       </div>
     </div>

@@ -90,8 +90,8 @@ const darkTheme: ThemeColors = {
   textSecondary: '#b8c1cf',
   textMuted: '#6b7a8d',
   
-  borderPrimary: '#1e293b',
-  borderSecondary: '#2d3f50',
+  borderPrimary: '#2d3f50',
+  borderSecondary: '#3d5060',
   
   Corridors: '#4a9eff',
   Signals: '#ffd93d',
@@ -103,8 +103,8 @@ const darkTheme: ThemeColors = {
   accent: '#4a9eff',
   accentHover: '#1d8bf8',
   
-  gridLine: '#0f1724',
-  rowLine: '#0f1724',
+  gridLine: '#15202d',
+  rowLine: '#15202d',
   arrowColor: '#4a6080',
   
   tooltipBg: '#000000',
