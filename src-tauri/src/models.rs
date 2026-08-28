@@ -55,11 +55,22 @@ pub struct Connection {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Candle {
+    pub timestamp: DateTime<Utc>,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineData {
     pub events: Vec<LogEvent>,
     pub corridor_groups: Vec<CorridorGroup>,
     pub connections: Vec<Connection>,
-    pub deals: Vec<LogEvent>,          // События без corridor_id
+    pub deals: Vec<LogEvent>,
+    pub candles: Vec<Candle>,
     pub stats: TimelineStats,
 }
 

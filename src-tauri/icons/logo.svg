@@ -1,0 +1,49 @@
+<svg
+  width="170" height="170"
+  viewBox="0 0 170 170"
+  preserveAspectRatio="xMidYMid slice"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <radialGradient id="starGradient" cx="0" cy="0" r="1"
+      gradientUnits="userSpaceOnUse"
+      gradientTransform="translate(85 50) rotate(90) scale(70 70)">
+      <stop offset="0%" stop-color="rgba(10,157,255,0.986)" />
+      <stop offset="100%" stop-color="#BF30D0" />
+    </radialGradient>
+    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Фон туманности -->
+  <rect width="170" height="170" fill="url(#nebula)"/>
+
+  <!-- Мелкие звёздочки -->
+  <g fill="#fff" opacity="0.6">
+    <!-- случайные точки -->
+    <circle cx="20" cy="30" r="1.2"/>
+    <circle cx="50" cy="140" r="0.8"/>
+    <circle cx="140" cy="25" r="1.5"/>
+    <circle cx="100" cy="80" r="1.0"/>
+    <circle cx="30" cy="100" r="0.6"/>
+    <circle cx="160" cy="150" r="0.9"/>
+  </g>
+
+  <!-- Группа для центрирования и масштабирования звезды -->
+  <g transform="
+      translate(85 85)
+      scale(1.5)
+      translate(-85 -85)
+    ">
+    <path
+        d="M85.718 37.566C86.931 42.546 90.857 55.236 101.217 65.892C111.851 76.83 124.929 80.994 129.625 82.2C129.975 82.29 129.975 82.926 129.625 83.016C124.953 84.198 112.003 88.296 101.409 99.126C90.828 109.944 86.826 123.18 85.659 127.962C85.572 128.328 84.948 128.328 84.86 127.962C83.693 123.18 79.686 109.944 69.104 99.126C58.651 88.428 45.888 84.306 41.075 83.058C40.713 82.968 40.725 82.296 41.087 82.212C45.934 81.09 58.82 77.262 69.489 66.486C80.077 55.794 83.769 42.672 84.86 37.578C84.936 37.206 85.63 37.194 85.718 37.566Z"
+        fill="url(#starGradient)"
+        filter="url(#neonGlow)"
+    />
+  </g>
+</svg>

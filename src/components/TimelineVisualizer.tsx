@@ -51,25 +51,26 @@ interface TimelineVisualizerProps {
   data: TimelineData;
   activeInstruments: Set<string>;
   activeTypes: Set<string>;
+  brushDomain?: [Date, Date] | null;
 }
 
 const colors: Record<string, string> = {
-  CR: '#2563eb',
-  SG: '#16a34a',
-  TC: '#dc2626',
-  RK: '#f97316',
-  TA: '#8b5cf6',
-  DEAL: '#facc15'
+  Corridors: '#2563eb',
+  Signals: '#eab308',
+  Touchs: '#dc2626',
+  Risks: '#f97316',
+  Tactics: '#8b5cf6',
+  Deals: '#22c55e'
 };
 
 function getEventTypeColor(type: string): string {
   switch (type) {
-    case 'Corridors': return colors.CR;
-    case 'Signals': return colors.SG;
-    case 'Touchs': return colors.TC;
-    case 'Risks': return colors.RK;
-    case 'Tactics': return colors.TA;
-    case 'Deals': return colors.DEAL;
+    case 'Corridors': return colors.Corridors;
+    case 'Signals': return colors.Signals;
+    case 'Touchs': return colors.Touchs;
+    case 'Risks': return colors.Risks;
+    case 'Tactics': return colors.Tactics;
+    case 'Deals': return colors.Deals;
     default: return '#888';
   }
 }
@@ -78,7 +79,7 @@ function getTypeLabel(eventType: string): string {
   return eventType;
 }
 
-const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeInstruments, activeTypes }) => {
+const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeInstruments, activeTypes, brushDomain }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [svgHeight, setSvgHeight] = useState(500);
@@ -109,15 +110,23 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
     if (allTimes.length === 0) return;
 
-    const minTime = new Date(Math.min(...allTimes.map(t => t.getTime())));
-    const maxTime = new Date(Math.max(...allTimes.map(t => t.getTime())));
-    const range = maxTime.getTime() - minTime.getTime();
-    const padding = range * 0.05 || 5 * 60 * 1000;
-    const timeStart = new Date(minTime.getTime() - padding);
-    const timeEnd = new Date(maxTime.getTime() + padding);
+    let minTime: Date;
+    let maxTime: Date;
+    
+    if (brushDomain) {
+      minTime = brushDomain[0];
+      maxTime = brushDomain[1];
+    } else {
+      minTime = new Date(Math.min(...allTimes.map(t => t.getTime())));
+      maxTime = new Date(Math.max(...allTimes.map(t => t.getTime())));
+      const range = maxTime.getTime() - minTime.getTime();
+      const padding = range * 0.05 || 5 * 60 * 1000;
+      minTime = new Date(minTime.getTime() - padding);
+      maxTime = new Date(maxTime.getTime() + padding);
+    }
 
     const xScale = d3.scaleTime()
-      .domain([timeStart, timeEnd])
+      .domain([minTime, maxTime])
       .range([0, innerWidth]);
 
     // Создаем строки для коридоров и сделок
@@ -333,11 +342,11 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         .attr('y', rowHeight/2 + 5)
         .attr('text-anchor', 'end')
         .text('DEALS')
-        .style('fill', colors.DEAL);
+        .style('fill', colors.Deals);
 
       const firstX = xScale(new Date(events[0].timestamp)) ?? 0;
       const lastX = xScale(new Date(events[events.length-1].timestamp)) ?? 0;
-
+      
       group.append('line')
         .attr('class', 'corridor-line')
         .attr('x1', firstX)
@@ -351,7 +360,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         const time = new Date(ev.timestamp);
         const x = xScale(time) ?? 0;
         const y = rowHeight/2;
-        const color = colors.DEAL || '#facc15';
+        const color = colors.Deals;
         const size = 8;
 
         const points = [
@@ -399,7 +408,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       });
     });
 
-  }, [data, activeInstruments, activeTypes]);
+  }, [data, activeInstruments, activeTypes, brushDomain]);
 
   return (
     <div className="vis-content" ref={containerRef}>

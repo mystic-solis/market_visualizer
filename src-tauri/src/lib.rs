@@ -5,7 +5,6 @@ mod parser;
 use crate::models::{DataSourceConfig, LogEvent, ParserConfig, TimelineData};
 use chrono::{DateTime, Utc};
 use std::fs;
-use tauri_plugin_updater::UpdaterExt;
 
 // Функция для парсинга данных из JSON файла (для удобства разработки и тестирования)
 #[tauri::command]
@@ -188,7 +187,7 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
             id,
             timestamp,
             instrument: instrument.clone(),
-            corridor_id: None, // Сделки не привязаны к коридорам
+            corridor_id: None,
             event_type: event_type.clone(),
             value: value.to_string(),
             raw_line: format!(
@@ -199,11 +198,53 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
         });
     }
 
+    // Генерация свечей (реалистичные, рандомизированные)
+    let mut candles = Vec::new();
+    use rand::Rng;
+    use rand::SeedableRng;
+    use rand::rngs::StdRng;
+    
+    let seed = 42u64;
+    let mut rng = StdRng::seed_from_u64(seed);
+    
+    let base_price = match Instrument::EURUSD { _ => 1.1200 };
+    let volatility = 0.0008;
+    let mut current_price = base_price;
+    
+    for i in 0..200 {
+        let timestamp = base_time + chrono::Duration::minutes(i * 5);
+        
+        let change: f64 = rng.gen_range(-volatility..=volatility);
+        let open = current_price;
+        let close = open * (1.0 + change);
+        
+        let wick_range = (close - open).abs() * 0.5;
+        let high_add: f64 = rng.gen_range(0.0..=wick_range);
+        let low_sub: f64 = rng.gen_range(0.0..=wick_range);
+        
+        let high = open.max(close) + high_add;
+        let low = open.min(close) - low_sub;
+        
+        let volume: f64 = rng.gen_range(100.0..=10000.0);
+        
+        candles.push(crate::models::Candle {
+            timestamp,
+            open,
+            high,
+            low,
+            close,
+            volume,
+        });
+        
+        current_price = close;
+    }
+
     // Сортируем события по времени
     events.sort_by_key(|e| e.timestamp);
 
     // Группируем события
-    let timeline_data = grouping::GroupingEngine::group_events(events);
+    let mut timeline_data = grouping::GroupingEngine::group_events(events);
+    timeline_data.candles = candles;
 
     Ok(timeline_data)
 }
@@ -212,9 +253,7 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|_app| {
-            // Здесь можно инициализировать состояние приложения
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

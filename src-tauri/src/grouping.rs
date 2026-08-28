@@ -98,6 +98,7 @@ impl GroupingEngine {
             corridor_groups,
             connections,
             deals,
+            candles: Vec::new(),
             stats: TimelineStats {
                 total_events,
                 total_corridors,
