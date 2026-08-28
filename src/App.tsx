@@ -1,24 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import TimelineVisualizer from './components/TimelineVisualizer';
-import CandlestickChart from './components/CandlestickChart';
 import logoSvg from '../src-tauri/icons/logo.svg';
-
-interface Candle {
-  timestamp: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
 
 interface TimelineData {
   events: any[];
   corridor_groups: any[];
   connections: any[];
   deals: any[];
-  candles: Candle[];
   stats: {
     total_events: number;
     total_corridors: number;
@@ -43,11 +32,8 @@ function App() {
   const [instrumentDropdownOpen, setInstrumentDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [brushDomain, setBrushDomain] = useState<[Date, Date] | null>(null);
-  const [candleData, setCandleData] = useState<{ date: Date; open: number; high: number; low: number; close: number }[]>([]);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const [brushDomain] = useState<[Date, Date] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [chartWidth, setChartWidth] = useState(1200);
 
   useEffect(() => {
     loadTestData();
@@ -61,29 +47,6 @@ function App() {
   }, []);
 
   useEffect(() => { localStorage.setItem('dataSource', dataSource); }, [dataSource]);
-
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) setChartWidth(containerRef.current.clientWidth);
-    };
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
-  }, []);
-
-  useEffect(() => {
-    if (timelineData?.candles) {
-      const data = timelineData.candles.map(c => ({
-        date: new Date(c.timestamp),
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close
-      }));
-      setCandleData(data);
-      if (data.length > 0) setBrushDomain([data[0].date, data[data.length - 1].date]);
-    }
-  }, [timelineData]);
 
   const loadTestData = async () => {
     try {
@@ -193,42 +156,7 @@ function App() {
             )}
           </div>
         </div>
-
-        <div className="filter-group">
-          <label>Источник данных:</label>
-          <div className="data-source-toggle">
-            <button className={`source-btn ${dataSource === 'json' ? 'active' : ''}`} onClick={() => setDataSource('json')}>📄 JSON-файл</button>
-            <button className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`} onClick={() => setDataSource('kafka')}>🔌 Kafka</button>
-          </div>
-        </div>
-
-        <div className="legend">
-          {allTypes.map(type => {
-            const color = type === 'Corridors' ? '#2563eb' : type === 'Signals' ? '#eab308' : type === 'Touchs' ? '#dc2626' : type === 'Risks' ? '#f97316' : type === 'Tactics' ? '#8b5cf6' : '#22c55e';
-            return (
-              <div key={type} className="legend-item">
-                <span className="legend-color" style={{ background: color }}></span>
-                <span className="legend-label">{type}</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
-
-      {candleData.length > 0 && (
-        <div className="chart-section">
-          <CandlestickChart
-            data={candleData}
-            width={chartWidth}
-            height={200}
-            onBrush={setBrushDomain}
-            brushDomain={brushDomain}
-            instrument={activeInstruments.size === 1 ? Array.from(activeInstruments)[0] : 'EURUSD'}
-            onScroll={setScrollLeft}
-            scrollLeft={scrollLeft}
-          />
-        </div>
-      )}
 
       <main className="vis-container" id="vis-container" style={{ overflowX: 'auto' }} onScroll={(e) => {
         if (containerRef.current) {
@@ -243,6 +171,19 @@ function App() {
         )}
       </main>
 
+      {/* Legend - small, centered, below chart */}
+      <div className="legend-bottom">
+        {allTypes.map(type => {
+          const color = type === 'Corridors' ? '#2563eb' : type === 'Signals' ? '#eab308' : type === 'Touchs' ? '#dc2626' : type === 'Risks' ? '#f97316' : type === 'Tactics' ? '#8b5cf6' : '#22c55e';
+          return (
+            <div key={type} className="legend-bottom-item">
+              <span className="legend-bottom-color" style={{ background: color }}></span>
+              <span className="legend-bottom-label">{type}</span>
+            </div>
+          );
+        })}
+      </div>
+
       {settingsOpen && (
         <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -251,6 +192,14 @@ function App() {
               <button className="modal-close" onClick={() => setSettingsOpen(false)}>✕</button>
             </div>
             <div className="modal-body">
+              <div className="setting-item">
+                <label>Источник данных:</label>
+                <div className="data-source-toggle">
+                  <button className={`source-btn ${dataSource === 'json' ? 'active' : ''}`} onClick={() => setDataSource('json')}>📄 JSON-файл</button>
+                  <button className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`} onClick={() => setDataSource('kafka')}>🔌 Kafka</button>
+                </div>
+                <p className="setting-hint">Переключение между файлом и потоком данных</p>
+              </div>
               <div className="setting-item">
                 <label>Экспорт данных:</label>
                 <button className="export-btn" onClick={() => {
