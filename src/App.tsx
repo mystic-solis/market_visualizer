@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { check } from '@tauri-apps/plugin-updater';
 import TimelineVisualizer from './components/TimelineVisualizer';
 
 interface TimelineData {
@@ -27,9 +26,12 @@ function App() {
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [activeInstruments, setActiveInstruments] = useState<Set<string>>(new Set(allInstruments));
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(allTypes));
-  const [dataSource, setDataSource] = useState<DataSourceType>('json');
+  const [dataSource, setDataSource] = useState<DataSourceType>(() => {
+    return (localStorage.getItem('dataSource') as DataSourceType) || 'json';
+  });
   const [instrumentDropdownOpen, setInstrumentDropdownOpen] = useState(false);
   const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     loadTestData();
@@ -46,11 +48,12 @@ function App() {
     };
     document.addEventListener('click', handleClickOutside);
     
-    // Проверка обновлений при запуске приложения
-    checkForUpdates();
-    
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('dataSource', dataSource);
+  }, [dataSource]);
 
   const loadTestData = async () => {
     try {
@@ -93,64 +96,28 @@ function App() {
     return Array.from(activeTypes).join(', ');
   };
 
-  // Функция для проверки и установки обновлений
-  const checkForUpdates = async () => {
-    try {
-      console.log('Checking for updates...');
-      const update = await check();
-      console.log('Update check result:', update);
-      if (update) {
-        console.log(`Update available: ${update.version}`);
-        
-        // Запрашиваем у пользователя установку обновления
-        const shouldInstall = window.confirm(
-          `Доступна новая версия приложения (${update.version}). Установить сейчас?`
-        );
-        
-        if (shouldInstall) {
-          let downloaded = 0;
-          let contentLength = 0;
-
-          await update.downloadAndInstall((event) => {
-            switch (event.event) {
-              case 'Started':
-                contentLength = event.data.contentLength || 0;
-                console.log(`Starting download of ${contentLength} bytes...`);
-                break;
-              case 'Progress':
-                downloaded += event.data.chunkLength;
-                console.log(`Downloaded ${downloaded} from ${contentLength}`);
-                break;
-              case 'Finished':
-                console.log('Download finished, installing...');
-                break;
-            }
-          });
-
-          alert('Обновление установлено. Пожалуйста, перезапустите приложение вручную.');
-        }
-      } else {
-        console.log('No updates available.');
-      }
-    } catch (error) {
-      console.error('Error checking for updates:', error);
-    }
-  };
-
   // Статистика
   const totalEvents = timelineData?.stats.total_events || 0;
   const totalCorridors = timelineData?.stats.total_corridors || 0;
   const totalDeals = timelineData?.stats.total_deals || 0;
-  const currentVersion = '0.1.8';
 
   return (
     <div className="app-container">
       <header className="app-header">
         <h1 className="title">📊 Временная линия событий</h1>
-        <div className="stats" id="stats-bar">
-          <span>Всего: <span id="total-events">{totalEvents}</span></span>
-          <span>Коридоров: <span id="total-corridors">{totalCorridors}</span></span>
-          <span>Сделок: <span id="total-deals">{totalDeals}</span></span>
+        <div className="header-right">
+          <div className="stats" id="stats-bar">
+            <span>Всего: <span id="total-events">{totalEvents}</span></span>
+            <span>Коридоров: <span id="total-corridors">{totalCorridors}</span></span>
+            <span>Сделок: <span id="total-deals">{totalDeals}</span></span>
+          </div>
+          <button 
+            className="settings-btn" 
+            onClick={() => setSettingsOpen(true)}
+            title="Настройки"
+          >
+            ⚙️
+          </button>
         </div>
       </header>
 
@@ -231,25 +198,6 @@ function App() {
             )}
           </div>
         </div>
-
-        {/* Источник данных */}
-        <div className="filter-group">
-          <label>Источник данных:</label>
-          <div className="data-source-toggle">
-            <button 
-              className={`source-btn ${dataSource === 'json' ? 'active' : ''}`}
-              onClick={() => setDataSource('json')}
-            >
-              JSON-файл
-            </button>
-            <button 
-              className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`}
-              onClick={() => setDataSource('kafka')}
-            >
-              Kafka
-            </button>
-          </div>
-        </div>
       </div>
 
       <main className="vis-container" id="vis-container">
@@ -267,11 +215,62 @@ function App() {
         )}
       </main>
 
-      <footer className="footer">
-        <span>Наведите на событие для деталей · Клик для информации</span>
-        <span className="footer-version">v{currentVersion}</span>
-        <button className="check-updates-btn" onClick={checkForUpdates}>Проверить обновления</button>
-      </footer>
+      <footer className="footer">Наведите на событие для деталей · Клик для информации</footer>
+
+      {/* Модальное окно настроек */}
+      {settingsOpen && (
+        <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>⚙️ Настройки</h2>
+              <button className="modal-close" onClick={() => setSettingsOpen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="setting-item">
+                <label>Источник данных:</label>
+                <div className="data-source-toggle">
+                  <button 
+                    className={`source-btn ${dataSource === 'json' ? 'active' : ''}`}
+                    onClick={() => setDataSource('json')}
+                  >
+                    📄 JSON-файл
+                  </button>
+                  <button 
+                    className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`}
+                    onClick={() => setDataSource('kafka')}
+                  >
+                    🔌 Kafka
+                  </button>
+                </div>
+              </div>
+              <div className="setting-item">
+                <label>Экспорт данных:</label>
+                <button className="export-btn" onClick={() => {
+                  if (timelineData) {
+                    const blob = new Blob([JSON.stringify(timelineData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `market-visualizer-export-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }
+                }}>
+                  📥 Экспорт текущих данных в JSON
+                </button>
+              </div>
+              <div className="setting-item">
+                <label>О приложении:</label>
+                <div className="about-info">
+                  <p><strong>Market Visualizer</strong></p>
+                  <p>Версия: 0.1.10</p>
+                  <p>Платформа: Tauri + React + D3.js</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
