@@ -61,19 +61,22 @@ function getTypeLabel(eventType: string): string {
 const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeInstruments, activeTypes, brushDomain }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(1200);
+  const [containerSize, setContainerSize] = useState({ width: 1200, height: 400 });
   const [timeZoom, setTimeZoom] = useState(1);
-  const [timePan, setTimePan] = useState(0);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef({ startX: 0, startPan: 0 });
+  const dragRef = useRef({ startX: 0, startY: 0, startPanX: 0, startPanY: 0 });
 
-  // Track container width
+  // Track container size
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setContainerWidth(Math.max(entry.contentRect.width, 400));
+        setContainerSize({
+          width: Math.max(entry.contentRect.width, 400),
+          height: Math.max(entry.contentRect.height, 300)
+        });
       }
     });
     observer.observe(container);
@@ -100,6 +103,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
   }
 
   const svgHeight = rows.length * ROW_HEIGHT;
+  const svgWidth = Math.max(2000, containerSize.width * 2); // Wide SVG for panning
 
   // Compute time domain
   const allTimes: Date[] = [];
@@ -122,72 +126,82 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
   const baseTimeRange = maxTime.getTime() - minTime.getTime();
   const margin = { top: 40, right: 40, bottom: 50, left: 80 };
-  const innerWidth = containerWidth - margin.left - margin.right;
+  const innerWidth = svgWidth - margin.left - margin.right;
 
   // Visible time range
-  const visibleRange = baseTimeRange / timeZoom;
-  const centerTime = minTime.getTime() + baseTimeRange / 2 + timePan;
-  const viewMinTime = new Date(centerTime - visibleRange / 2);
-  const viewMaxTime = new Date(centerTime + visibleRange / 2);
+  const visibleTimeRange = baseTimeRange / timeZoom;
+  const centerTime = minTime.getTime() + baseTimeRange / 2 + pan.x;
+  const viewMinTime = new Date(centerTime - visibleTimeRange / 2);
+  const viewMaxTime = new Date(centerTime + visibleTimeRange / 2);
 
   const xScale = d3.scaleTime().domain([viewMinTime, viewMaxTime]).range([0, innerWidth]);
 
   // Reset zoom/pan
   const resetView = useCallback(() => {
     setTimeZoom(1);
-    setTimePan(0);
+    setPan({ x: 0, y: 0 });
   }, []);
 
-  // Zoom in/out
-  const zoomIn = useCallback(() => {
-    setTimeZoom(prev => Math.min(MAX_TIME_ZOOM, prev * 1.3));
-  }, []);
+  const zoomIn = useCallback(() => setTimeZoom(prev => Math.min(MAX_TIME_ZOOM, prev * 1.3)), []);
+  const zoomOut = useCallback(() => setTimeZoom(prev => Math.max(MIN_TIME_ZOOM, prev / 1.3)), []);
 
-  const zoomOut = useCallback(() => {
-    setTimeZoom(prev => Math.max(MIN_TIME_ZOOM, prev / 1.3));
-  }, []);
+  // Clamp pan values
+  const clampPan = useCallback((x: number, y: number) => {
+    const maxPanX = Math.max(0, (svgWidth - containerSize.width) / 2 + baseTimeRange * timeZoom * 0.5);
+    const maxPanY = Math.max(0, (svgHeight - containerSize.height) / 2);
+    return {
+      x: Math.max(-maxPanX, Math.min(maxPanX, x)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, y))
+    };
+  }, [svgWidth, svgHeight, containerSize, baseTimeRange, timeZoom]);
 
   // Wheel handler
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) return;
+      if (e.metaKey) return;
       e.preventDefault();
       const rect = container.getBoundingClientRect();
       const mouseX = e.clientX - rect.left - margin.left;
       const mouseTime = xScale.invert(mouseX).getTime();
       
       if (e.shiftKey) {
-        const pixelsPerMs = innerWidth / visibleRange;
+        // Horizontal pan with Shift+wheel
+        const pixelsPerMs = innerWidth / visibleTimeRange;
         const timeDelta = -e.deltaY / pixelsPerMs;
-        setTimePan(prev => prev + timeDelta);
+        setPan(prev => clampPan(prev.x + timeDelta, prev.y));
+      } else if (e.ctrlKey) {
+        // Vertical pan with Ctrl+wheel
+        setPan(prev => clampPan(prev.x, prev.y - e.deltaY));
       } else {
+        // Horizontal zoom (centered on mouse)
         const zoomFactor = e.deltaY > 0 ? 0.85 : 1.18;
         const newZoom = Math.max(MIN_TIME_ZOOM, Math.min(MAX_TIME_ZOOM, timeZoom * zoomFactor));
         const newCenterTime = mouseTime + (centerTime - mouseTime) * (newZoom / timeZoom);
-        const newPan = newCenterTime - (minTime.getTime() + baseTimeRange / 2);
+        const newPanX = newCenterTime - (minTime.getTime() + baseTimeRange / 2);
         setTimeZoom(newZoom);
-        setTimePan(newPan);
+        setPan(prev => clampPan(newPanX, prev.y));
       }
     };
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [timeZoom, timePan, containerWidth, visibleRange, innerWidth, centerTime, minTime, baseTimeRange]);
+  }, [timeZoom, pan, containerSize, visibleTimeRange, innerWidth, centerTime, minTime, baseTimeRange, clampPan]);
 
-  // Drag handlers
+  // Drag handlers (2D pan)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      const deltaX = e.clientX - dragRef.current.startX;
-      const pixelsPerMs = innerWidth / visibleRange;
-      const timeDelta = -deltaX / pixelsPerMs;
-      setTimePan(dragRef.current.startPan + timeDelta);
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      const pixelsPerMs = innerWidth / visibleTimeRange;
+      const timeDelta = -dx / pixelsPerMs;
+      const newPanX = dragRef.current.startPanX + timeDelta;
+      const newPanY = dragRef.current.startPanY - dy;
+      setPan(clampPan(newPanX, newPanY));
     };
 
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
+    const handleMouseUp = () => setIsDragging(false);
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -195,15 +209,15 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, innerWidth, visibleRange]);
+  }, [isDragging, innerWidth, visibleTimeRange, clampPan]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as Element;
-    if (target.closest('.event-circle, .deal-diamond, .connection-line, .corridor-line')) return;
-    dragRef.current = { startX: e.clientX, startPan: timePan };
+    if (target.closest('.event-circle, .deal-diamond, .connection-line, .corridor-line, button')) return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y };
     setIsDragging(true);
-  }, [timePan]);
+  }, [pan]);
 
   // Draw SVG
   useEffect(() => {
@@ -211,7 +225,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
-      .attr('width', containerWidth)
+      .attr('width', svgWidth)
       .attr('height', svgHeight)
       .style('display', 'block');
 
@@ -390,22 +404,26 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       });
     });
 
-  }, [data, activeInstruments, activeTypes, brushDomain, containerWidth, timeZoom, timePan, svgHeight, rows, minTime, maxTime, baseTimeRange, viewMinTime, viewMaxTime, innerWidth]);
+  }, [data, activeInstruments, activeTypes, brushDomain, containerSize, timeZoom, pan, svgWidth, svgHeight, rows, minTime, maxTime, baseTimeRange, viewMinTime, viewMaxTime, innerWidth, margin.left, margin.top, margin.bottom, colors.Deals]);
 
   return (
     <div 
       ref={containerRef}
       style={{ 
         height: '100%', 
-        overflowY: 'auto', 
-        overflowX: 'hidden',
-        cursor: isDragging ? 'grabbing' : 'default',
+        overflow: 'hidden',
+        cursor: isDragging ? 'grabbing' : 'grab',
         position: 'relative',
         userSelect: 'none'
       }}
       onMouseDown={handleMouseDown}
     >
-      <svg ref={svgRef} id="timeline-svg" style={{ touchAction: 'none' }}></svg>
+      <div style={{
+        transform: `translate(${-pan.x}px, ${-pan.y}px)`,
+        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+      }}>
+        <svg ref={svgRef} id="timeline-svg" style={{ touchAction: 'none' }}></svg>
+      </div>
       
       {/* Zoom controls */}
       <div style={{
@@ -414,15 +432,16 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         right: 10,
         display: 'flex',
         gap: 4,
-        background: 'rgba(255,255,255,0.9)',
+        background: 'rgba(255,255,255,0.95)',
         borderRadius: 6,
         padding: 4,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+        backdropFilter: 'blur(4px)'
       }}>
         <button onClick={zoomOut} title="Zoom out" style={{
           width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 4,
           background: 'white', cursor: 'pointer', fontSize: 16, display: 'flex',
-          alignItems: 'center', justifyContent: 'center'
+          alignItems: 'center', justifyContent: 'center', lineHeight: 1
         }}>−</button>
         <span style={{
           minWidth: 40, textAlign: 'center', fontSize: 11, color: '#64748b',
@@ -431,13 +450,28 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         <button onClick={zoomIn} title="Zoom in" style={{
           width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 4,
           background: 'white', cursor: 'pointer', fontSize: 16, display: 'flex',
-          alignItems: 'center', justifyContent: 'center'
+          alignItems: 'center', justifyContent: 'center', lineHeight: 1
         }}>+</button>
+        <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '4px 2px' }}></div>
         <button onClick={resetView} title="Reset view" style={{
           width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 4,
-          background: 'white', cursor: 'pointer', fontSize: 12, display: 'flex',
-          alignItems: 'center', justifyContent: 'center'
+          background: 'white', cursor: 'pointer', fontSize: 14, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', lineHeight: 1
         }}>⟲</button>
+      </div>
+
+      {/* Navigation hint */}
+      <div style={{
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
+        fontSize: 10,
+        color: '#94a3b8',
+        background: 'rgba(255,255,255,0.8)',
+        padding: '2px 6px',
+        borderRadius: 4
+      }}>
+        Drag to pan • Scroll to zoom • Shift+Scroll • Ctrl+Scroll
       </div>
     </div>
   );
