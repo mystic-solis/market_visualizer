@@ -1,5 +1,5 @@
 :root {
-  /* Light theme defaults (overridden by ThemeContext) */
+  /* Light theme defaults */
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
@@ -32,6 +32,41 @@
   
   --hover-highlight: #000000;
   --selected-highlight: #000000;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0a0f1a;
+  --bg-secondary: #0f1629;
+  --bg-tertiary: #1a2332;
+  --bg-header: #0f1629;
+  --bg-legend: #0f1629;
+  
+  --text-primary: #e8eaed;
+  --text-secondary: #b8c1cf;
+  --text-muted: #6b7a8d;
+  
+  --border-primary: #1e293b;
+  --border-secondary: #2d3f50;
+  
+  --color-corridors: #4a9eff;
+  --color-signals: #ffd93d;
+  --color-touchs: #ff6b6b;
+  --color-risks: #ff9f43;
+  --color-tactics: #a885e8;
+  --color-deals: #51cf66;
+  
+  --accent: #4a9eff;
+  --accent-hover: #1d8bf8;
+  
+  --grid-line: #0f1724;
+  --row-line: #0f1724;
+  --arrow-color: #4a6080;
+  
+  --tooltip-bg: #000000;
+  --tooltip-text: #ffffff;
+  
+  --hover-highlight: #ffffff;
+  --selected-highlight: #4a9eff;
 }
 
 * {

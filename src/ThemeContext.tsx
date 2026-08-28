@@ -1,4 +1,3 @@
-// src/ThemeContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface ThemeColors {
@@ -42,7 +41,7 @@ export interface ThemeColors {
   // Interactive
   hoverHighlight: string;
   selectedHighlight: string;
-  [key: string]: string; // Allow dynamic access
+  [key: string]: string;
 }
 
 const lightTheme: ThemeColors = {
@@ -81,38 +80,38 @@ const lightTheme: ThemeColors = {
 };
 
 const darkTheme: ThemeColors = {
-  bgPrimary: '#0f172a',
-  bgSecondary: '#1e293b',
-  bgTertiary: '#334155',
-  bgHeader: '#1e293b',
-  bgLegend: '#1e293b',
+  bgPrimary: '#0a0f1a',
+  bgSecondary: '#0f1629',
+  bgTertiary: '#1a2332',
+  bgHeader: '#0f1629',
+  bgLegend: '#0f1629',
   
-  textPrimary: '#f1f5f9',
-  textSecondary: '#cbd5e1',
-  textMuted: '#64748b',
+  textPrimary: '#e8eaed',
+  textSecondary: '#b8c1cf',
+  textMuted: '#6b7a8d',
   
-  borderPrimary: '#334155',
-  borderSecondary: '#475569',
+  borderPrimary: '#1e293b',
+  borderSecondary: '#2d3f50',
   
-  Corridors: '#3b82f6',
-  Signals: '#fbbf24',
-  Touchs: '#ef4444',
-  Risks: '#fb923c',
-  Tactics: '#a78bfa',
-  Deals: '#4ade80',
+  Corridors: '#4a9eff',
+  Signals: '#ffd93d',
+  Touchs: '#ff6b6b',
+  Risks: '#ff9f43',
+  Tactics: '#a885e8',
+  Deals: '#51cf66',
   
-  accent: '#60a5fa',
-  accentHover: '#3b82f6',
+  accent: '#4a9eff',
+  accentHover: '#1d8bf8',
   
-  gridLine: '#1e293b',
-  rowLine: '#1e293b',
-  arrowColor: '#64748b',
+  gridLine: '#0f1724',
+  rowLine: '#0f1724',
+  arrowColor: '#4a6080',
   
-  tooltipBg: '#0f172a',
-  tooltipText: '#f1f5f9',
+  tooltipBg: '#000000',
+  tooltipText: '#ffffff',
   
   hoverHighlight: '#ffffff',
-  selectedHighlight: '#ffffff',
+  selectedHighlight: '#4a9eff',
 };
 
 type ThemeMode = 'light' | 'dark';
@@ -153,48 +152,15 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const applyThemeToDocument = (colors: ThemeColors) => {
     const root = document.documentElement;
     
-    // Backgrounds
-    root.style.setProperty('--bg-primary', colors.bgPrimary);
-    root.style.setProperty('--bg-secondary', colors.bgSecondary);
-    root.style.setProperty('--bg-tertiary', colors.bgTertiary);
-    root.style.setProperty('--bg-header', colors.bgHeader);
-    root.style.setProperty('--bg-legend', colors.bgLegend);
+    Object.entries(colors).forEach(([key, value]) => {
+      let varName = key;
+      // Convert camelCase to kebab-case
+      if (/[A-Z]/.test(key)) {
+        varName = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+      }
+      root.style.setProperty(`--${varName}`, value);
+    });
     
-    // Text
-    root.style.setProperty('--text-primary', colors.textPrimary);
-    root.style.setProperty('--text-secondary', colors.textSecondary);
-    root.style.setProperty('--text-muted', colors.textMuted);
-    
-    // Borders
-    root.style.setProperty('--border-primary', colors.borderPrimary);
-    root.style.setProperty('--border-secondary', colors.borderSecondary);
-    
-    // Event types
-    root.style.setProperty('--color-corridors', colors.Corridors);
-    root.style.setProperty('--color-signals', colors.Signals);
-    root.style.setProperty('--color-touchs', colors.Touchs);
-    root.style.setProperty('--color-risks', colors.Risks);
-    root.style.setProperty('--color-tactics', colors.Tactics);
-    root.style.setProperty('--color-deals', colors.Deals);
-    
-    // Accent
-    root.style.setProperty('--accent', colors.accent);
-    root.style.setProperty('--accent-hover', colors.accentHover);
-    
-    // Chart
-    root.style.setProperty('--grid-line', colors.gridLine);
-    root.style.setProperty('--row-line', colors.rowLine);
-    root.style.setProperty('--arrow-color', colors.arrowColor);
-    
-    // Tooltip
-    root.style.setProperty('--tooltip-bg', colors.tooltipBg);
-    root.style.setProperty('--tooltip-text', colors.tooltipText);
-    
-    // Interactive
-    root.style.setProperty('--hover-highlight', colors.hoverHighlight);
-    root.style.setProperty('--selected-highlight', colors.selectedHighlight);
-    
-    // Set data-theme attribute for CSS fallback
     document.documentElement.setAttribute('data-theme', mode);
   };
 

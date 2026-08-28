@@ -52,14 +52,41 @@ function SettingsModal({
   dataSource: string; 
   setDataSource: (v: 'json' | 'kafka') => void;
   colors: any;
-    updateColor: (key: string, value: string) => void;
+  updateColor: (key: string, value: string) => void;
   resetToDefaults: () => void;
 }) {
   if (!isOpen) return null;
 
+  const eventColorKeys = ['Corridors', 'Signals', 'Touchs', 'Risks', 'Tactics', 'Deals'];
+  const bgColorKeys = [
+    { key: 'bgPrimary', label: 'Основной фон' },
+    { key: 'bgSecondary', label: 'Вторичный фон' },
+    { key: 'bgTertiary', label: 'Третичный фон' },
+    { key: 'bgHeader', label: 'Фон заголовка' },
+    { key: 'bgLegend', label: 'Фон легенды' },
+  ];
+  const textColorKeys = [
+    { key: 'textPrimary', label: 'Основной текст' },
+    { key: 'textSecondary', label: 'Вторичный текст' },
+    { key: 'textMuted', label: 'Приглушенный текст' },
+  ];
+  const borderColorKeys = [
+    { key: 'borderPrimary', label: 'Основная граница' },
+    { key: 'borderSecondary', label: 'Вторичная граница' },
+  ];
+  const accentColorKeys = [
+    { key: 'accent', label: 'Акцент' },
+    { key: 'accentHover', label: 'Акцент (наведение)' },
+  ];
+  const chartColorKeys = [
+    { key: 'gridLine', label: 'Линии сетки' },
+    { key: 'rowLine', label: 'Линии рядов' },
+    { key: 'arrowColor', label: 'Стрелки' },
+  ];
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 600 }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '80vh', overflow: 'auto' }}>
         <div className="modal-header">
           <h2>⚙️ Настройки</h2>
           <button className="modal-close" onClick={onClose}>✕</button>
@@ -76,34 +103,75 @@ function SettingsModal({
 
           <div className="setting-item">
             <label>Цвета событий:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
-              {allTypes.map(type => (
-                <ColorPicker
-                  key={type}
-                  label={type}
-                  value={colors[type]}
-                  onChange={(v) => updateColor(type, v)}
-                />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
+              {eventColorKeys.map(key => (
+                <ColorPicker key={key} label={key} value={colors[key]} onChange={(v) => updateColor(key, v)} />
               ))}
             </div>
-            <button 
-              onClick={resetToDefaults}
-              style={{
-                marginTop: 8,
-                padding: '4px 12px',
-                fontSize: 11,
-                border: '1px solid var(--border-primary)',
-                borderRadius: 4,
-                background: 'var(--bg-tertiary)',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer'
-              }}
-            >
-              Сбросить к стандартным
-            </button>
           </div>
 
           <div className="setting-item">
+            <label>Фоновые цвета:</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+              {bgColorKeys.map(({ key, label }) => (
+                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+              ))}
+            </div>
+          </div>
+
+          <div className="setting-item">
+            <label>Цвета текста:</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
+              {textColorKeys.map(({ key, label }) => (
+                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+              ))}
+            </div>
+          </div>
+
+          <div className="setting-item">
+            <label>Цвета границ:</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+              {borderColorKeys.map(({ key, label }) => (
+                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+              ))}
+            </div>
+          </div>
+
+          <div className="setting-item">
+            <label>Акцентные цвета:</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+              {accentColorKeys.map(({ key, label }) => (
+                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+              ))}
+            </div>
+          </div>
+
+          <div className="setting-item">
+            <label>Цвета графика:</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 16px' }}>
+              {chartColorKeys.map(({ key, label }) => (
+                <ColorPicker key={key} label={label} value={colors[key]} onChange={(v) => updateColor(key, v)} />
+              ))}
+            </div>
+          </div>
+
+          <button 
+            onClick={resetToDefaults}
+            style={{
+              marginTop: 8,
+              padding: '6px 16px',
+              fontSize: 12,
+              border: '1px solid var(--border-primary)',
+              borderRadius: 4,
+              background: 'var(--bg-tertiary)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer'
+            }}
+          >
+            Сбросить все цвета к стандартным
+          </button>
+
+          <div className="setting-item" style={{ marginTop: 20 }}>
             <label>Экспорт данных:</label>
             <button className="export-btn">📥 Экспорт в JSON</button>
             <p className="setting-hint">Экспортирует все текущие данные (события, коридоры, сделки) в JSON файл</p>
@@ -273,11 +341,10 @@ function AppContent() {
       {/* Legend - small, centered, below chart */}
       <div className="legend-bottom">
         {allTypes.map(type => {
-          const colorVar = `--color-${type.toLowerCase()}`;
-          const color = getComputedStyle(document.documentElement).getPropertyValue(colorVar).trim() || colors[type];
+          const colorVar = `var(--color-${type.toLowerCase()})`;
           return (
             <div key={type} className="legend-bottom-item">
-              <span className="legend-bottom-color" style={{ background: color, '--legend-color': color } as any}></span>
+              <span className="legend-bottom-color" style={{ background: colorVar } as any}></span>
               <span className="legend-bottom-label">{type}</span>
             </div>
           );

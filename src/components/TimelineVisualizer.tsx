@@ -233,7 +233,12 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     
     svg.append('g')
       .attr('transform', `translate(${margin.left}, 0)`)
-      .call(d3.axisBottom(xScale).ticks(Math.floor(innerWidth / 80)).tickFormat(d3.timeFormat('%H:%M')).tickSizeOuter(0));
+      .call(d3.axisBottom(xScale).ticks(Math.floor(innerWidth / 80)).tickFormat(d3.timeFormat('%H:%M')).tickSizeOuter(0))
+      .selectAll('text')
+      .style('fill', 'var(--text-muted)');
+    
+    svg.selectAll('.axis path, .axis line')
+      .style('stroke', 'var(--border-secondary)');
   }, [graphWidth, margin.left, xScale, innerWidth]);
 
   // Draw main SVG
@@ -255,7 +260,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       gridLines.append('line')
         .attr('x1', x).attr('x2', x)
         .attr('y1', 0).attr('y2', svgHeight)
-        .attr('stroke', '#e9edf2').attr('stroke-dasharray', '3,3');
+        .style('stroke', 'var(--grid-line)').attr('stroke-dasharray', '3,3');
     });
 
     // Horizontal row lines
@@ -265,7 +270,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       hGridLines.append('line')
         .attr('x1', 0).attr('x2', innerWidth)
         .attr('y1', y).attr('y2', y)
-        .attr('stroke', '#f1f5f9').attr('stroke-dasharray', '2,4');
+        .style('stroke', 'var(--row-line)').attr('stroke-dasharray', '2,4');
     });
 
     // Arrow marker
@@ -274,7 +279,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       .attr('id', 'arrowhead')
       .attr('markerWidth', 8).attr('markerHeight', 6)
       .attr('refX', 8).attr('refY', 3).attr('orient', 'auto')
-      .append('polygon').attr('points', '0 0, 8 3, 0 6').attr('fill', '#94a3b8');
+      .append('polygon').attr('points', '0 0, 8 3, 0 6').style('fill', 'var(--arrow-color)');
 
     let currentTooltip: HTMLElement | null = null;
     let hoveredElement: any = null;
@@ -291,7 +296,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
           currentTooltip.style.top = (ty - 40) + 'px';
         }
         hoveredElement = element;
-        hoveredElement.attr('stroke', '#000').attr('stroke-width', 2);
+        hoveredElement.attr('stroke', 'var(--hover-highlight)').attr('stroke-width', 2);
       }
     };
 
@@ -299,7 +304,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       const tooltipDiv = document.getElementById('tooltip');
       if (tooltipDiv) tooltipDiv.classList.add('hidden');
       if (hoveredElement) {
-        hoveredElement.attr('stroke', 'white').attr('stroke-width', 1.5);
+        hoveredElement.attr('stroke', 'var(--bg-primary)').attr('stroke-width', 1.5);
         hoveredElement = null;
       }
     };
@@ -338,7 +343,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
         const circleSel = group.append('circle').attr('class', 'event-circle')
           .attr('cx', x).attr('cy', y).attr('r', circleR)
-          .attr('fill', color).attr('stroke', 'white').attr('stroke-width', 1.5)
+          .attr('fill', color).attr('stroke', 'var(--bg-primary)').attr('stroke-width', 1.5)
           .attr('data-id', ev.id).attr('data-type', ev.event_type)
           .attr('data-instrument', ev.instrument).attr('data-value', ev.value);
 
@@ -357,7 +362,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         group.append('text').attr('x', x).attr('y', y - circleR - 3)
           .attr('text-anchor', 'middle')
           .style('font-size', '9px').style('font-weight', '600')
-          .style('fill', '#1e293b').style('pointer-events', 'none').text(typeLabel);
+          .style('fill', 'var(--text-primary)').style('pointer-events', 'none').text(typeLabel);
       });
     });
 
@@ -386,7 +391,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
         const diamondSel = group.append('polygon').attr('class', 'deal-diamond')
           .attr('points', points).attr('fill', colors.Deals)
-          .attr('stroke', 'white').attr('stroke-width', 1.5)
+          .attr('stroke', 'var(--bg-primary)').attr('stroke-width', 1.5)
           .attr('data-id', ev.id).attr('data-type', 'Deals')
           .attr('data-instrument', ev.instrument).attr('data-value', ev.value);
 
@@ -435,8 +440,8 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         <div style={{
           width: LABEL_WIDTH,
           flexShrink: 0,
-          background: '#f8fafc',
-          borderRight: '1px solid #e2e8f0',
+          background: 'var(--bg-secondary)',
+          borderRight: '1px solid var(--border-primary)',
           zIndex: 10,
           overflow: 'hidden',
           position: 'relative'
@@ -455,9 +460,9 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
                 paddingRight: 10,
                 fontSize: 12,
                 fontWeight: 600,
-                color: r.type === 'deals' ? colors.Deals : '#1e293b',
-                borderBottom: '1px solid #f1f5f9',
-                background: '#f8fafc'
+                color: r.type === 'deals' ? colors.Deals : 'var(--text-primary)',
+                borderBottom: '1px solid var(--row-line)',
+                background: 'var(--bg-secondary)'
               }}>
                 {r.type === 'deals' ? 'DEALS' : r.corridorId}
               </div>
@@ -485,29 +490,29 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         display: 'flex',
         flexShrink: 0,
         height: HEADER_HEIGHT,
-        background: '#f8fafc',
-        borderTop: '2px solid #e2e8f0',
+        background: 'var(--bg-secondary)',
+        borderTop: '2px solid var(--border-primary)',
         zIndex: 20
       }}>
         {/* Corner cell */}
         <div style={{
           width: LABEL_WIDTH,
           flexShrink: 0,
-          background: '#f1f5f9',
-          borderRight: '1px solid #e2e8f0',
+          background: 'var(--bg-tertiary)',
+          borderRight: '1px solid var(--border-primary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 10,
           fontWeight: 600,
-          color: '#94a3b8'
+          color: 'var(--text-muted)'
         }}>TIME</div>
         {/* Time axis */}
         <div style={{
           flex: 1,
           overflow: 'hidden',
           position: 'relative',
-          background: '#f8fafc'
+          background: 'var(--bg-secondary)'
         }}>
           <svg ref={axisRef} style={{ display: 'block' }}></svg>
         </div>
@@ -520,31 +525,35 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         right: 10,
         display: 'flex',
         gap: 4,
-        background: 'rgba(255,255,255,0.95)',
+        background: 'var(--bg-primary)',
         borderRadius: 6,
         padding: 4,
         boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-        backdropFilter: 'blur(4px)'
+        backdropFilter: 'blur(4px)',
+        border: '1px solid var(--border-primary)'
       }}>
         <button onClick={zoomOut} title="Zoom out" style={{
-          width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 4,
-          background: 'white', cursor: 'pointer', fontSize: 16, display: 'flex',
-          alignItems: 'center', justifyContent: 'center', lineHeight: 1
+          width: 28, height: 28, border: '1px solid var(--border-primary)', borderRadius: 4,
+          background: 'var(--bg-tertiary)', cursor: 'pointer', fontSize: 16, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          color: 'var(--text-primary)'
         }}>−</button>
         <span style={{
-          minWidth: 40, textAlign: 'center', fontSize: 11, color: '#64748b',
+          minWidth: 40, textAlign: 'center', fontSize: 11, color: 'var(--text-secondary)',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>{timeZoom.toFixed(1)}x</span>
         <button onClick={zoomIn} title="Zoom in" style={{
-          width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 4,
-          background: 'white', cursor: 'pointer', fontSize: 16, display: 'flex',
-          alignItems: 'center', justifyContent: 'center', lineHeight: 1
+          width: 28, height: 28, border: '1px solid var(--border-primary)', borderRadius: 4,
+          background: 'var(--bg-tertiary)', cursor: 'pointer', fontSize: 16, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          color: 'var(--text-primary)'
         }}>+</button>
-        <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '4px 2px' }}></div>
+        <div style={{ width: 1, height: 20, background: 'var(--border-primary)', margin: '4px 2px' }}></div>
         <button onClick={resetView} title="Reset view" style={{
-          width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 4,
-          background: 'white', cursor: 'pointer', fontSize: 14, display: 'flex',
-          alignItems: 'center', justifyContent: 'center', lineHeight: 1
+          width: 28, height: 28, border: '1px solid var(--border-primary)', borderRadius: 4,
+          background: 'var(--bg-tertiary)', cursor: 'pointer', fontSize: 14, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          color: 'var(--text-primary)'
         }}>⟲</button>
       </div>
 
@@ -554,8 +563,8 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         bottom: 10,
         right: 10,
         fontSize: 10,
-        color: '#94a3b8',
-        background: 'rgba(255,255,255,0.8)',
+        color: 'var(--text-muted)',
+        background: 'var(--bg-secondary)',
         padding: '2px 6px',
         borderRadius: 4
       }}>
