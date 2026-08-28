@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import TimelineVisualizer from './components/TimelineVisualizer';
+import { ThemeProvider, useTheme } from './ThemeContext';
+import { ThemeToggle } from './ThemeToggle';
 import logoSvg from '../src-tauri/icons/logo.svg';
 
 interface TimelineData {
@@ -22,7 +24,106 @@ const allInstruments = ['EURUSD', 'GBPUSD', 'BTCUSD'];
 const allTypes = ['Corridors', 'Signals', 'Touchs', 'Risks', 'Tactics', 'Deals'];
 type DataSourceType = 'json' | 'kafka';
 
-function App() {
+function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ width: 32, height: 24, border: 'none', borderRadius: 4, cursor: 'pointer' }}
+      />
+      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
+    </div>
+  );
+}
+
+function SettingsModal({ 
+  isOpen, 
+  onClose, 
+  dataSource, 
+  setDataSource, 
+  colors, 
+  updateColor, 
+  resetToDefaults 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  dataSource: string; 
+  setDataSource: (v: 'json' | 'kafka') => void;
+  colors: any;
+    updateColor: (key: string, value: string) => void;
+  resetToDefaults: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 600 }}>
+        <div className="modal-header">
+          <h2>⚙️ Настройки</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="setting-item">
+            <label>Источник данных:</label>
+            <div className="data-source-toggle">
+              <button className={`source-btn ${dataSource === 'json' ? 'active' : ''}`} onClick={() => setDataSource('json')}>📄 JSON-файл</button>
+              <button className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`} onClick={() => setDataSource('kafka')}>🔌 Kafka</button>
+            </div>
+            <p className="setting-hint">Переключение между файлом и потоком данных</p>
+          </div>
+
+          <div className="setting-item">
+            <label>Цвета событий:</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
+              {allTypes.map(type => (
+                <ColorPicker
+                  key={type}
+                  label={type}
+                  value={colors[type]}
+                  onChange={(v) => updateColor(type, v)}
+                />
+              ))}
+            </div>
+            <button 
+              onClick={resetToDefaults}
+              style={{
+                marginTop: 8,
+                padding: '4px 12px',
+                fontSize: 11,
+                border: '1px solid var(--border-primary)',
+                borderRadius: 4,
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              Сбросить к стандартным
+            </button>
+          </div>
+
+          <div className="setting-item">
+            <label>Экспорт данных:</label>
+            <button className="export-btn">📥 Экспорт в JSON</button>
+            <p className="setting-hint">Экспортирует все текущие данные (события, коридоры, сделки) в JSON файл</p>
+          </div>
+
+          <div className="setting-item">
+            <label>О приложении:</label>
+            <div className="about-info">
+              <p><strong>Market Visualizer</strong></p>
+              <p>Версия: 0.1.16</p>
+              <p>Платформа: Tauri + React + D3.js</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppContent() {
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [activeInstruments, setActiveInstruments] = useState<Set<string>>(new Set(allInstruments));
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(allTypes));
@@ -34,6 +135,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [brushDomain] = useState<[Date, Date] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { colors, updateColor, resetToDefaults } = useTheme();
 
   useEffect(() => {
     loadTestData();
@@ -108,6 +210,7 @@ function App() {
             <span>Коридоров: <span className="filtered-count">{filteredCorridors}</span><span className="total-count">/{totalCorridors}</span></span>
             <span>Сделок: <span className="filtered-count">{filteredDeals}</span><span className="total-count">/{totalDeals}</span></span>
           </div>
+          <ThemeToggle />
           <button className="settings-btn" onClick={() => setSettingsOpen(true)} title="Настройки">⚙️</button>
         </div>
       </header>
@@ -170,60 +273,35 @@ function App() {
       {/* Legend - small, centered, below chart */}
       <div className="legend-bottom">
         {allTypes.map(type => {
-          const color = type === 'Corridors' ? '#2563eb' : type === 'Signals' ? '#eab308' : type === 'Touchs' ? '#dc2626' : type === 'Risks' ? '#f97316' : type === 'Tactics' ? '#8b5cf6' : '#22c55e';
+          const colorVar = `--color-${type.toLowerCase()}`;
+          const color = getComputedStyle(document.documentElement).getPropertyValue(colorVar).trim() || colors[type];
           return (
             <div key={type} className="legend-bottom-item">
-              <span className="legend-bottom-color" style={{ background: color }}></span>
+              <span className="legend-bottom-color" style={{ background: color, '--legend-color': color } as any}></span>
               <span className="legend-bottom-label">{type}</span>
             </div>
           );
         })}
       </div>
 
-      {settingsOpen && (
-        <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>⚙️ Настройки</h2>
-              <button className="modal-close" onClick={() => setSettingsOpen(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div className="setting-item">
-                <label>Источник данных:</label>
-                <div className="data-source-toggle">
-                  <button className={`source-btn ${dataSource === 'json' ? 'active' : ''}`} onClick={() => setDataSource('json')}>📄 JSON-файл</button>
-                  <button className={`source-btn ${dataSource === 'kafka' ? 'active' : ''}`} onClick={() => setDataSource('kafka')}>🔌 Kafka</button>
-                </div>
-                <p className="setting-hint">Переключение между файлом и потоком данных</p>
-              </div>
-              <div className="setting-item">
-                <label>Экспорт данных:</label>
-                <button className="export-btn" onClick={() => {
-                  if (timelineData) {
-                    const blob = new Blob([JSON.stringify(timelineData, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `market-visualizer-export-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  } else { alert('Нет данных для экспорта. Сначала загрузите данные.'); }
-                }}>📥 Экспорт в JSON</button>
-                <p className="setting-hint">Экспортирует все текущие данные (события, коридоры, сделки) в JSON файл</p>
-              </div>
-              <div className="setting-item">
-                <label>О приложении:</label>
-                <div className="about-info">
-                  <p><strong>Market Visualizer</strong></p>
-                  <p>Версия: 0.1.14</p>
-                  <p>Платформа: Tauri + React + D3.js</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        dataSource={dataSource}
+        setDataSource={setDataSource}
+        colors={colors}
+        updateColor={updateColor}
+        resetToDefaults={resetToDefaults}
+      />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

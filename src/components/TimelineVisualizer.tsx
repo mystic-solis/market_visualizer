@@ -38,12 +38,12 @@ interface TimelineVisualizerProps {
 }
 
 const colors: Record<string, string> = {
-  Corridors: '#2563eb',
-  Signals: '#eab308',
-  Touchs: '#dc2626',
-  Risks: '#f97316',
-  Tactics: '#8b5cf6',
-  Deals: '#22c55e'
+  Corridors: 'var(--color-corridors)',
+  Signals: 'var(--color-signals)',
+  Touchs: 'var(--color-touchs)',
+  Risks: 'var(--color-risks)',
+  Tactics: 'var(--color-tactics)',
+  Deals: 'var(--color-deals)'
 };
 
 const ROW_HEIGHT = 60;
