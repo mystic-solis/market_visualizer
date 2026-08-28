@@ -522,9 +522,9 @@ body {
 }
 
 .chart-title {
-  font-size: 11px;
-  fill: #64748b;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
+  fill: #1e293b;
 }
 
 .candlestick-container {
@@ -534,8 +534,7 @@ body {
   border-radius: 12px;
   background: #ffffff;
   margin-top: 8px;
-  height: 200px;
-  min-height: 200px;
+  position: relative;
 }
 
 .candlestick-container::-webkit-scrollbar {
@@ -558,8 +557,8 @@ body {
 .candlestick-chart {
   display: block;
   width: 100%;
-  height: 160px;
-  min-height: 160px;
+  height: 200px;
+  font-family: 'Segoe UI', sans-serif;
 }
 
 .candlestick-chart .grid line {
@@ -570,6 +569,19 @@ body {
 .candlestick-chart .brush .selection {
   fill: rgba(59, 130, 246, 0.15);
   stroke: rgba(59, 130, 246, 0.5);
+}
+
+.candlestick-chart .crosshair {
+  pointer-events: none;
+}
+
+.candlestick-chart .price-label text {
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.candlestick-tooltip {
+  font-family: 'Segoe UI', sans-serif;
+  line-height: 1.5;
 }
 
 .chart-container {

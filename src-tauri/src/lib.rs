@@ -208,17 +208,30 @@ fn generate_test_timeline_data() -> Result<TimelineData, String> {
     let mut rng = StdRng::seed_from_u64(seed);
     
     let base_price = match Instrument::EURUSD { _ => 1.1200 };
-    let volatility = 0.0008;
+    let volatility = 0.0015;
     let mut current_price = base_price;
     
-    for i in 0..200 {
-        let timestamp = base_time + chrono::Duration::minutes(i * 5);
+    // Генерируем 300 свечей с реалистичными интервалами
+    let mut timestamp = base_time;
+    for i in 0..300 {
+        // Реалистичные интервалы: 5-30 минут между свечами
+        let interval: i64 = rng.gen_range(5..=30);
+        timestamp = timestamp + chrono::Duration::minutes(interval);
         
-        let change: f64 = rng.gen_range(-volatility..=volatility);
+        // Тренды: восходящий, нисходящий, боковик
+        let trend = match i % 60 {
+            0..=20 => 0.0002,   // Восходящий
+            21..=40 => -0.0002,  // Нисходящий
+            _ => 0.0,            // Боковик
+        };
+        
+        let change: f64 = rng.gen_range(-volatility..=volatility) + trend;
         let open = current_price;
         let close = open * (1.0 + change);
         
-        let wick_range = (close - open).abs() * 0.5;
+        // Реалистичные тени (виксы)
+        let body_size = (close - open).abs();
+        let wick_range = body_size * (0.5 + rng.gen_range(0.0..2.0));
         let high_add: f64 = rng.gen_range(0.0..=wick_range);
         let low_sub: f64 = rng.gen_range(0.0..=wick_range);
         

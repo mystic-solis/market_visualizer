@@ -220,7 +220,7 @@ function App() {
           <CandlestickChart
             data={candleData}
             width={chartWidth}
-            height={180}
+            height={200}
             onBrush={setBrushDomain}
             brushDomain={brushDomain}
             instrument={activeInstruments.size === 1 ? Array.from(activeInstruments)[0] : 'EURUSD'}
