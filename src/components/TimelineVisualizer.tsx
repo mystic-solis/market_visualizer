@@ -63,9 +63,10 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 1200, height: 400 });
   const [timeZoom, setTimeZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [panMs, setPanMs] = useState(0);        // horizontal pan in milliseconds
+  const [panYPx, setPanYPx] = useState(0);       // vertical pan in pixels
   const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef({ startX: 0, startY: 0, startPanX: 0, startPanY: 0 });
+  const dragRef = useRef({ startX: 0, startY: 0, startPanMs: 0, startPanYPx: 0 });
 
   // Track container size
   useEffect(() => {
@@ -103,7 +104,6 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
   }
 
   const svgHeight = rows.length * ROW_HEIGHT;
-  const svgWidth = Math.max(2000, containerSize.width * 2); // Wide SVG for panning
 
   // Compute time domain
   const allTimes: Date[] = [];
@@ -126,11 +126,13 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
   const baseTimeRange = maxTime.getTime() - minTime.getTime();
   const margin = { top: 40, right: 40, bottom: 50, left: 80 };
-  const innerWidth = svgWidth - margin.left - margin.right;
+  const innerWidth = containerSize.width - margin.left - margin.right;
 
-  // Visible time range
+  // Calculate visible time range based on zoom
   const visibleTimeRange = baseTimeRange / timeZoom;
-  const centerTime = minTime.getTime() + baseTimeRange / 2 + pan.x;
+  const baseCenterTime = minTime.getTime() + baseTimeRange / 2;
+  const centerTime = baseCenterTime + panMs;
+
   const viewMinTime = new Date(centerTime - visibleTimeRange / 2);
   const viewMaxTime = new Date(centerTime + visibleTimeRange / 2);
 
@@ -139,21 +141,23 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
   // Reset zoom/pan
   const resetView = useCallback(() => {
     setTimeZoom(1);
-    setPan({ x: 0, y: 0 });
+    setPanMs(0);
+    setPanYPx(0);
   }, []);
 
   const zoomIn = useCallback(() => setTimeZoom(prev => Math.min(MAX_TIME_ZOOM, prev * 1.3)), []);
   const zoomOut = useCallback(() => setTimeZoom(prev => Math.max(MIN_TIME_ZOOM, prev / 1.3)), []);
 
   // Clamp pan values
-  const clampPan = useCallback((x: number, y: number) => {
-    const maxPanX = Math.max(0, (svgWidth - containerSize.width) / 2 + baseTimeRange * timeZoom * 0.5);
-    const maxPanY = Math.max(0, (svgHeight - containerSize.height) / 2);
-    return {
-      x: Math.max(-maxPanX, Math.min(maxPanX, x)),
-      y: Math.max(-maxPanY, Math.min(maxPanY, y))
-    };
-  }, [svgWidth, svgHeight, containerSize, baseTimeRange, timeZoom]);
+  const clampPanMs = useCallback((ms: number) => {
+    const maxPanMs = baseTimeRange * timeZoom * 0.5;
+    return Math.max(-maxPanMs, Math.min(maxPanMs, ms));
+  }, [baseTimeRange, timeZoom]);
+
+  const clampPanYPx = useCallback((y: number) => {
+    const maxY = Math.max(0, svgHeight - containerSize.height);
+    return Math.max(-maxY, Math.min(maxY, y));
+  }, [svgHeight, containerSize.height]);
 
   // Wheel handler
   useEffect(() => {
@@ -162,31 +166,24 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     const handleWheel = (e: WheelEvent) => {
       if (e.metaKey) return;
       e.preventDefault();
-      const rect = container.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left - margin.left;
-      const mouseTime = xScale.invert(mouseX).getTime();
       
       if (e.shiftKey) {
         // Horizontal pan with Shift+wheel
         const pixelsPerMs = innerWidth / visibleTimeRange;
-        const timeDelta = -e.deltaY / pixelsPerMs;
-        setPan(prev => clampPan(prev.x + timeDelta, prev.y));
+        const msDelta = -e.deltaY / pixelsPerMs;
+        setPanMs(prev => clampPanMs(prev + msDelta));
       } else if (e.ctrlKey) {
         // Vertical pan with Ctrl+wheel
-        setPan(prev => clampPan(prev.x, prev.y - e.deltaY));
+        setPanYPx(prev => clampPanYPx(prev - e.deltaY));
       } else {
-        // Horizontal zoom (centered on mouse)
+        // Horizontal zoom (centered on viewport center)
         const zoomFactor = e.deltaY > 0 ? 0.85 : 1.18;
-        const newZoom = Math.max(MIN_TIME_ZOOM, Math.min(MAX_TIME_ZOOM, timeZoom * zoomFactor));
-        const newCenterTime = mouseTime + (centerTime - mouseTime) * (newZoom / timeZoom);
-        const newPanX = newCenterTime - (minTime.getTime() + baseTimeRange / 2);
-        setTimeZoom(newZoom);
-        setPan(prev => clampPan(newPanX, prev.y));
+        setTimeZoom(prev => Math.max(MIN_TIME_ZOOM, Math.min(MAX_TIME_ZOOM, prev * zoomFactor)));
       }
     };
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [timeZoom, pan, containerSize, visibleTimeRange, innerWidth, centerTime, minTime, baseTimeRange, clampPan]);
+  }, [clampPanMs, clampPanYPx, innerWidth, visibleTimeRange]);
 
   // Drag handlers (2D pan)
   useEffect(() => {
@@ -194,11 +191,16 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       if (!isDragging) return;
       const dx = e.clientX - dragRef.current.startX;
       const dy = e.clientY - dragRef.current.startY;
+      
+      // Convert pixel delta to time delta for horizontal
       const pixelsPerMs = innerWidth / visibleTimeRange;
-      const timeDelta = -dx / pixelsPerMs;
-      const newPanX = dragRef.current.startPanX + timeDelta;
-      const newPanY = dragRef.current.startPanY - dy;
-      setPan(clampPan(newPanX, newPanY));
+      const msDelta = -dx / pixelsPerMs;
+      
+      const newPanMs = clampPanMs(dragRef.current.startPanMs + msDelta);
+      const newPanYPx = clampPanYPx(dragRef.current.startPanYPx + dy);
+      
+      setPanMs(newPanMs);
+      setPanYPx(newPanYPx);
     };
 
     const handleMouseUp = () => setIsDragging(false);
@@ -209,15 +211,15 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, innerWidth, visibleTimeRange, clampPan]);
+  }, [isDragging, innerWidth, visibleTimeRange, clampPanMs, clampPanYPx]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as Element;
     if (target.closest('.event-circle, .deal-diamond, .connection-line, .corridor-line, button')) return;
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPanMs: panMs, startPanYPx: panYPx };
     setIsDragging(true);
-  }, [pan]);
+  }, [panMs, panYPx]);
 
   // Draw SVG
   useEffect(() => {
@@ -225,7 +227,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
-      .attr('width', svgWidth)
+      .attr('width', containerSize.width)
       .attr('height', svgHeight)
       .style('display', 'block');
 
@@ -404,7 +406,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       });
     });
 
-  }, [data, activeInstruments, activeTypes, brushDomain, containerSize, timeZoom, pan, svgWidth, svgHeight, rows, minTime, maxTime, baseTimeRange, viewMinTime, viewMaxTime, innerWidth, margin.left, margin.top, margin.bottom, colors.Deals]);
+  }, [data, activeInstruments, activeTypes, brushDomain, containerSize, timeZoom, panMs, svgHeight, rows, minTime, maxTime, baseTimeRange, viewMinTime, viewMaxTime, innerWidth, margin.left, margin.top, margin.bottom, colors.Deals]);
 
   return (
     <div 
@@ -419,7 +421,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       onMouseDown={handleMouseDown}
     >
       <div style={{
-        transform: `translate(${-pan.x}px, ${-pan.y}px)`,
+        transform: `translateY(${panYPx}px)`,
         transition: isDragging ? 'none' : 'transform 0.1s ease-out'
       }}>
         <svg ref={svgRef} id="timeline-svg" style={{ touchAction: 'none' }}></svg>
