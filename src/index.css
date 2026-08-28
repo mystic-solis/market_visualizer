@@ -249,8 +249,10 @@ body {
 .legend-bottom-color {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: 50%;
   flex-shrink: 0;
+  border: 1.5px solid white;
+  box-shadow: 0 0 0 1px #e2e8f0;
 }
 
 .legend-bottom-label {
