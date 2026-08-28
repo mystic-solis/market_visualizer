@@ -301,10 +301,13 @@ function App() {
                     a.download = `market-visualizer-export-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
                     a.click();
                     URL.revokeObjectURL(url);
+                  } else {
+                    alert('Нет данных для экспорта. Сначала загрузите данные.');
                   }
                 }}>
-                  📥 Экспорт текущих данных в JSON
+                  📥 Экспорт в JSON
                 </button>
+                <p className="setting-hint">Экспортирует все текущие данные (события, коридоры, сделки) в JSON файл</p>
               </div>
               <div className="setting-item">
                 <label>Обновления:</label>
