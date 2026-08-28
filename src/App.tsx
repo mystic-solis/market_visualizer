@@ -158,11 +158,7 @@ function App() {
         </div>
       </div>
 
-      <main className="vis-container" id="vis-container" style={{ overflowX: 'auto' }} onScroll={(e) => {
-        if (containerRef.current) {
-          containerRef.current.scrollLeft = e.currentTarget.scrollLeft;
-        }
-      }}>
+      <main className="vis-container" id="vis-container">
         <div id="tooltip" className="tooltip hidden"></div>
         {timelineData ? (
           <TimelineVisualizer data={timelineData} activeInstruments={activeInstruments} activeTypes={activeTypes} brushDomain={brushDomain} />

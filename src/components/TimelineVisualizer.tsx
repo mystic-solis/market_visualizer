@@ -82,7 +82,26 @@ function getTypeLabel(eventType: string): string {
 const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeInstruments, activeTypes, brushDomain }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [svgHeight, setSvgHeight] = useState(500);
+  const [containerSize, setContainerSize] = useState({ width: 1200, height: 500 });
+
+  // Track container size with ResizeObserver
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setContainerSize({ 
+          width: Math.max(width, 400), 
+          height: Math.max(height, 200) 
+        });
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || data.events.length === 0) return;
@@ -98,10 +117,11 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
     // Очистка предыдущего SVG
     d3.select(svgRef.current).selectAll('*').remove();
 
-    const containerWidth = containerRef.current.clientWidth || 1200;
+    const { width: containerWidth, height: containerHeight } = containerSize;
 
     const margin = { top: 40, right: 40, bottom: 50, left: 80 };
     const innerWidth = containerWidth - margin.left - margin.right;
+    const innerHeight = containerHeight - margin.top - margin.bottom;
 
     // Получаем временной диапазон
     const allTimes: Date[] = [];
@@ -143,16 +163,18 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       rows.push({ type: 'deals', events: filteredDeals });
     }
 
-    const rowHeight = 60;
     const totalRows = rows.length;
-    const totalHeight = totalRows * rowHeight;
-    const calculatedHeight = Math.max(500, totalHeight + margin.top + margin.bottom + 60);
-    setSvgHeight(calculatedHeight);
+    const actualRowHeight = totalRows > 0 ? innerHeight / totalRows : innerHeight;
+    const circleR = Math.min(7, actualRowHeight * 0.3);
+    const diamondSize = Math.min(8, actualRowHeight * 0.3);
+    const labelFontSize = Math.min(9, actualRowHeight * 0.35);
+    const showLabels = actualRowHeight > 20;
 
     const svg = d3.select(svgRef.current)
-      .attr('viewBox', `0 0 ${containerWidth} ${calculatedHeight}`)
-      .style('width', '100%')
-      .style('height', 'auto');
+      .attr('viewBox', `0 0 ${containerWidth} ${containerHeight}`)
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .style('display', 'block');
 
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -165,7 +187,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
 
     g.append('g')
       .attr('class', 'axis')
-      .attr('transform', `translate(0, ${totalHeight + 10})`)
+      .attr('transform', `translate(0, ${innerHeight})`)
       .call(xAxis as any);
 
     const gridLines = g.append('g').attr('class', 'grid');
@@ -176,7 +198,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
         .attr('x1', x)
         .attr('y1', 0)
         .attr('x2', x)
-        .attr('y2', totalHeight)
+        .attr('y2', innerHeight)
         .attr('stroke', '#e9edf2')
         .attr('stroke-dasharray', '3,3');
     });
@@ -187,7 +209,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       .enter()
       .append('g')
       .attr('class', 'row')
-      .attr('transform', (_d: RowData, i: number) => `translate(0, ${i * rowHeight})`);
+      .attr('transform', (_d: RowData, i: number) => `translate(0, ${i * actualRowHeight})`);
 
     // Маркер стрелки
     if (!svg.select('defs').size()) {
@@ -252,16 +274,16 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       group.append('line')
         .attr('class', 'corridor-line')
         .attr('x1', firstX)
-        .attr('y1', rowHeight/2)
+        .attr('y1', actualRowHeight/2)
         .attr('x2', lastX)
-        .attr('y2', rowHeight/2);
+        .attr('y2', actualRowHeight/2);
 
       for (let i = 0; i < events.length - 1; i++) {
         const fromTime = new Date(events[i].timestamp);
         const toTime = new Date(events[i+1].timestamp);
         const x1 = xScale(fromTime) ?? 0;
         const x2 = xScale(toTime) ?? 0;
-        const y = rowHeight/2;
+        const y = actualRowHeight/2;
 
         group.append('line')
           .attr('class', 'connection-line')
@@ -275,14 +297,14 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       group.append('text')
         .attr('class', 'corridor-label')
         .attr('x', -10)
-        .attr('y', rowHeight/2 + 5)
+        .attr('y', actualRowHeight/2 + 5)
         .attr('text-anchor', 'end')
         .text(corridorId);
 
       events.forEach((ev: Event) => {
         const time = new Date(ev.timestamp);
         const x = xScale(time) ?? 0;
-        const y = rowHeight/2;
+        const y = actualRowHeight/2;
         const color = getEventTypeColor(ev.event_type);
         const typeLabel = getTypeLabel(ev.event_type);
 
@@ -290,7 +312,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
           .attr('class', 'event-circle')
           .attr('cx', x)
           .attr('cy', y)
-          .attr('r', 7)
+          .attr('r', circleR)
           .attr('fill', color)
           .attr('stroke', 'white')
           .attr('stroke-width', 1.5)
@@ -316,15 +338,17 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
             hideTooltip();
           });
 
-        group.append('text')
-          .attr('x', x)
-          .attr('y', y - 12)
-          .attr('text-anchor', 'middle')
-          .style('font-size', '9px')
-          .style('font-weight', '600')
-          .style('fill', '#1e293b')
-          .style('pointer-events', 'none')
-          .text(typeLabel);
+        if (showLabels) {
+          group.append('text')
+            .attr('x', x)
+            .attr('y', y - circleR - 3)
+            .attr('text-anchor', 'middle')
+            .style('font-size', `${labelFontSize}px`)
+            .style('font-weight', '600')
+            .style('fill', '#1e293b')
+            .style('pointer-events', 'none')
+            .text(typeLabel);
+        }
       });
     });
 
@@ -339,7 +363,7 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       group.append('text')
         .attr('class', 'corridor-label')
         .attr('x', -10)
-        .attr('y', rowHeight/2 + 5)
+        .attr('y', actualRowHeight/2 + 5)
         .attr('text-anchor', 'end')
         .text('DEALS')
         .style('fill', colors.Deals);
@@ -350,24 +374,23 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
       group.append('line')
         .attr('class', 'corridor-line')
         .attr('x1', firstX)
-        .attr('y1', rowHeight/2)
+        .attr('y1', actualRowHeight/2)
         .attr('x2', lastX)
-        .attr('y2', rowHeight/2)
+        .attr('y2', actualRowHeight/2)
         .style('stroke-dasharray', '2,4')
         .style('stroke', '#94a3b8');
 
       events.forEach((ev: Event) => {
         const time = new Date(ev.timestamp);
         const x = xScale(time) ?? 0;
-        const y = rowHeight/2;
+        const y = actualRowHeight/2;
         const color = colors.Deals;
-        const size = 8;
 
         const points = [
-          [x, y - size],
-          [x + size, y],
-          [x, y + size],
-          [x - size, y]
+          [x, y - diamondSize],
+          [x + diamondSize, y],
+          [x, y + diamondSize],
+          [x - diamondSize, y]
         ].map(p => p.join(',')).join(' ');
 
         const diamondSel = group.append('polygon')
@@ -396,23 +419,25 @@ const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({ data, activeIns
             hideTooltip();
           });
 
-        group.append('text')
-          .attr('x', x)
-          .attr('y', y + 18)
-          .attr('text-anchor', 'middle')
-          .style('font-size', '9px')
-          .style('font-weight', '500')
-          .style('fill', '#475569')
-          .style('pointer-events', 'none')
-          .text(ev.instrument);
+        if (showLabels) {
+          group.append('text')
+            .attr('x', x)
+            .attr('y', y + diamondSize + 10)
+            .attr('text-anchor', 'middle')
+            .style('font-size', `${labelFontSize}px`)
+            .style('font-weight', '500')
+            .style('fill', '#475569')
+            .style('pointer-events', 'none')
+            .text(ev.instrument);
+        }
       });
     });
 
-  }, [data, activeInstruments, activeTypes, brushDomain]);
+  }, [data, activeInstruments, activeTypes, brushDomain, containerSize]);
 
   return (
     <div className="vis-content" ref={containerRef}>
-      <svg id="timeline-svg" width="100%" height={svgHeight} ref={svgRef}></svg>
+      <svg id="timeline-svg" width="100%" height="100%" ref={svgRef}></svg>
     </div>
   );
 };
