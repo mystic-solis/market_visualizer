@@ -49,6 +49,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'Market Visualizer v__VERSION__'
           releaseBody: 'Новая версия Market Visualizer.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
