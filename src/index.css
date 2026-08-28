@@ -451,3 +451,36 @@ body {
 .export-btn:hover {
   background: #2563eb;
 }
+
+.update-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.update-info {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.update-info.update-available {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.update-info.update-none {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.update-info.update-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.update-info.update-downloading {
+  background: #dbeafe;
+  color: #1e40af;
+  font-family: monospace;
+}
