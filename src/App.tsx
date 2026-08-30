@@ -321,12 +321,18 @@ function AppContent() {
         setUpdateStatus('Обновлений не найдено');
       }
     } catch (error) {
-      // 404 means no updates available - this is normal
       const errorMessage = String(error);
-      if (errorMessage.includes('404') || errorMessage.includes('No updates')) {
+      // No updates available or version not newer
+      if (
+        errorMessage.includes('404') ||
+        errorMessage.includes('No updates') ||
+        errorMessage.includes('Could not fetch') ||
+        errorMessage.includes('up to date') ||
+        errorMessage.includes('latest')
+      ) {
         setUpdateStatus('Обновлений не найдено');
       } else {
-        setUpdateStatus(`Ошибка: ${errorMessage.substring(0, 50)}`);
+        setUpdateStatus(`Ошибка: ${errorMessage.substring(0, 80)}`);
       }
     } finally {
       setIsCheckingUpdate(false);
