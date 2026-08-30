@@ -32,6 +32,7 @@ function useToast() {
 // Toast Component
 function ToastContainer() {
   const { toasts, removeToast } = useToast();
+  const { colors } = useTheme();
 
   return (
     <div style={{
@@ -49,13 +50,13 @@ function ToastContainer() {
           key={toast.id}
           onClick={() => removeToast(toast.id)}
           style={{
-            background: toast.type === 'update' ? '#4CAF50' : 
-                       toast.type === 'success' ? '#2196F3' :
-                       toast.type === 'error' ? '#f44336' : '#333',
-            color: 'white',
+            background: toast.type === 'update' ? '#22c55e' : 
+                       toast.type === 'success' ? colors.accent :
+                       toast.type === 'error' ? '#ef4444' : colors.bgTertiary,
+            color: toast.type === 'info' ? colors.textPrimary : '#ffffff',
             padding: '12px 20px',
             borderRadius: 8,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            boxShadow: `0 4px 12px ${colors.borderPrimary}`,
             cursor: 'pointer',
             pointerEvents: 'auto',
             minWidth: 250,
@@ -66,6 +67,7 @@ function ToastContainer() {
             alignItems: 'center',
             gap: 10,
             fontFamily: 'system-ui, -apple-system, sans-serif',
+            border: `1px solid ${colors.borderSecondary}`,
           }}
         >
           <span style={{ fontSize: 18 }}>
@@ -94,6 +96,7 @@ function ConfirmDialog({
   onConfirm: () => void; 
   onCancel: () => void;
 }) {
+  const { colors } = useTheme();
   if (!isOpen) return null;
 
   return (
@@ -110,16 +113,16 @@ function ConfirmDialog({
       zIndex: 10001,
     }}>
       <div style={{
-        background: 'var(--card, #1e1e1e)',
+        background: colors.bgTertiary,
         borderRadius: 12,
         padding: '24px 28px',
         maxWidth: 400,
         width: '90%',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        border: '1px solid var(--border-primary, #333)',
+        boxShadow: `0 8px 32px ${colors.borderPrimary}`,
+        border: `1px solid ${colors.borderPrimary}`,
       }}>
-        <h3 style={{ margin: '0 0 12px', color: 'var(--text-primary, #fff)' }}>{title}</h3>
-        <p style={{ margin: '0 0 20px', color: 'var(--text-secondary, #aaa)', whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+        <h3 style={{ margin: '0 0 12px', color: colors.textPrimary }}>{title}</h3>
+        <p style={{ margin: '0 0 20px', color: colors.textSecondary, whiteSpace: 'pre-line', lineHeight: 1.5 }}>
           {message}
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -127,10 +130,10 @@ function ConfirmDialog({
             onClick={onCancel}
             style={{
               padding: '8px 16px',
-              border: '1px solid var(--border-primary, #333)',
+              border: `1px solid ${colors.borderSecondary}`,
               borderRadius: 6,
               background: 'transparent',
-              color: 'var(--text-secondary, #aaa)',
+              color: colors.textSecondary,
               cursor: 'pointer',
               fontSize: 14,
             }}
@@ -143,7 +146,7 @@ function ConfirmDialog({
               padding: '8px 16px',
               border: 'none',
               borderRadius: 6,
-              background: '#4CAF50',
+              background: '#22c55e',
               color: 'white',
               cursor: 'pointer',
               fontSize: 14,
