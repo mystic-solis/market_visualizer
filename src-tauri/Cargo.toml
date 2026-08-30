@@ -1,6 +1,6 @@
 [package]
 name = "market-visualizer"
-version = "0.21.0"
+version = "0.1.22"
 description = "Market Visualizer Desktop Application"
 authors = ["you"]
 edition = "2021"

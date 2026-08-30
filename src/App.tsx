@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { check } from '@tauri-apps/plugin-updater';
@@ -6,6 +6,195 @@ import TimelineVisualizer from './components/TimelineVisualizer';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
 import logoSvg from '../src-tauri/icons/logo.svg';
+
+// Toast Context
+interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'update';
+  visible: boolean;
+}
+
+interface ToastContextType {
+  toasts: Toast[];
+  addToast: (message: string, type?: Toast['type']) => void;
+  removeToast: (id: number) => void;
+}
+
+const ToastContext = createContext<ToastContextType | null>(null);
+
+function useToast() {
+  const ctx = useContext(ToastContext);
+  if (!ctx) throw new Error('useToast must be used within ToastProvider');
+  return ctx;
+}
+
+// Toast Component
+function ToastContainer() {
+  const { toasts, removeToast } = useToast();
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 20,
+      right: 20,
+      zIndex: 10000,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      pointerEvents: 'none',
+    }}>
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          onClick={() => removeToast(toast.id)}
+          style={{
+            background: toast.type === 'update' ? '#4CAF50' : 
+                       toast.type === 'success' ? '#2196F3' :
+                       toast.type === 'error' ? '#f44336' : '#333',
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: 8,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            cursor: 'pointer',
+            pointerEvents: 'auto',
+            minWidth: 250,
+            maxWidth: 350,
+            animation: toast.visible ? 'slideIn 0.3s ease-out' : 'slideOut 0.3s ease-in',
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>
+            {toast.type === 'update' ? '🎉' : 
+             toast.type === 'success' ? '✅' :
+             toast.type === 'error' ? '❌' : 'ℹ️'}
+          </span>
+          <span style={{ flex: 1 }}>{toast.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Custom Confirm Dialog
+function ConfirmDialog({ 
+  isOpen, 
+  title, 
+  message, 
+  onConfirm, 
+  onCancel 
+}: { 
+  isOpen: boolean; 
+  title: string; 
+  message: string; 
+  onConfirm: () => void; 
+  onCancel: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10001,
+    }}>
+      <div style={{
+        background: 'var(--card, #1e1e1e)',
+        borderRadius: 12,
+        padding: '24px 28px',
+        maxWidth: 400,
+        width: '90%',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        border: '1px solid var(--border-primary, #333)',
+      }}>
+        <h3 style={{ margin: '0 0 12px', color: 'var(--text-primary, #fff)' }}>{title}</h3>
+        <p style={{ margin: '0 0 20px', color: 'var(--text-secondary, #aaa)', whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+          {message}
+        </p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: '8px 16px',
+              border: '1px solid var(--border-primary, #333)',
+              borderRadius: 6,
+              background: 'transparent',
+              color: 'var(--text-secondary, #aaa)',
+              cursor: 'pointer',
+              fontSize: 14,
+            }}
+          >
+            Отмена
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: '8px 16px',
+              border: 'none',
+              borderRadius: 6,
+              background: '#4CAF50',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            Установить
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Toast Provider
+function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const nextId = useRef(0);
+
+  const addToast = (message: string, type: Toast['type'] = 'info') => {
+    const id = nextId.current++;
+    setToasts(prev => [...prev, { id, message, type, visible: true }]);
+    setTimeout(() => {
+      setToasts(prev => prev.map(t => t.id === id ? { ...t, visible: false } : t));
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 300);
+    }, 5000);
+  };
+
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  return (
+    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
+      {children}
+      <ToastContainer />
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(100%); opacity: 0; }
+        }
+      `}</style>
+    </ToastContext.Provider>
+  );
+}
 
 interface TimelineData {
   events: any[];
@@ -282,9 +471,11 @@ function AppContent() {
   const [brushDomain] = useState<[Date, Date] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { colors, updateColor, resetToDefaults } = useTheme();
-  const [updateStatus, setUpdateStatus] = useState<string>('');
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const { addToast } = useToast();
   const [appVersion, setAppVersion] = useState<string>('...');
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<{ version: string; body: string } | null>(null);
 
   useEffect(() => {
     getVersion().then(v => setAppVersion(v)).catch(() => setAppVersion('unknown'));
@@ -292,41 +483,16 @@ function AppContent() {
 
   const handleCheckForUpdates = async () => {
     setIsCheckingUpdate(true);
-    setUpdateStatus('Проверка обновлений...');
     try {
       const update = await check();
       if (update) {
-        setUpdateStatus(`Найдена версия ${update.version}`);
-        const shouldInstall = window.confirm(
-          `Новая версия ${update.version} доступна!\n\nЗаметки:\n${update.body || 'Нет описания'}\n\nУстановить сейчас?`
-        );
-        if (shouldInstall) {
-          setUpdateStatus('Загрузка...');
-          await update.downloadAndInstall((event) => {
-            switch (event.event) {
-              case 'Started':
-                setUpdateStatus(`Загрузка: ${event.data.contentLength} байт`);
-                break;
-              case 'Progress':
-                setUpdateStatus(`Загружено: ${event.data.chunkLength} байт`);
-                break;
-              case 'Finished':
-                setUpdateStatus('Установка...');
-                break;
-            }
-          });
-          setUpdateStatus('Обновление установлено! Перезапустите приложение.');
-        }
+        setUpdateInfo({ version: update.version, body: update.body || '' });
+        setShowConfirm(true);
       } else {
-        setUpdateStatus('Обновлений не найдено');
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-          setUpdateStatus(prev => prev === 'Обновлений не найдено' ? '' : prev);
-        }, 5000);
+        addToast('Обновлений не найдено', 'info');
       }
     } catch (error) {
       const errorMessage = String(error);
-      // No updates available or version not newer
       if (
         errorMessage.includes('404') ||
         errorMessage.includes('No updates') ||
@@ -334,19 +500,49 @@ function AppContent() {
         errorMessage.includes('up to date') ||
         errorMessage.includes('latest')
       ) {
-        setUpdateStatus('Обновлений не найдено');
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-          setUpdateStatus(prev => prev === 'Обновлений не найдено' ? '' : prev);
-        }, 5000);
+        addToast('Обновлений не найдено', 'info');
       } else {
-        setUpdateStatus(`Ошибка: ${errorMessage.substring(0, 80)}`);
-        // Log full error to file
+        addToast(`Ошибка обновления: ${errorMessage.substring(0, 80)}`, 'error');
         invoke('append_to_log', { message: `Update error: ${errorMessage}` }).catch(() => {});
       }
     } finally {
       setIsCheckingUpdate(false);
     }
+  };
+
+  const handleConfirmInstall = async () => {
+    setShowConfirm(false);
+    if (!updateInfo) return;
+    
+    addToast(`Загрузка версии ${updateInfo.version}...`, 'info');
+    
+    try {
+      const update = await check();
+      if (update) {
+        await update.downloadAndInstall((event) => {
+          switch (event.event) {
+            case 'Started':
+              addToast(`Загрузка: ${event.data.contentLength} байт`, 'info');
+              break;
+            case 'Finished':
+              addToast('Установка обновления...', 'info');
+              break;
+          }
+        });
+        addToast('Обновление установлено! Перезапустите приложение.', 'success');
+      }
+    } catch (error) {
+      addToast(`Ошибка установки: ${String(error).substring(0, 80)}`, 'error');
+    }
+  };
+
+  const handleTestUpdate = () => {
+    // Simulate finding an update for testing
+    setUpdateInfo({ 
+      version: '99.99.99', 
+      body: '🎉 Тестовое обновление!\n\nЭто тестовое уведомление для проверки UI.\n\nНовая фича: красивые уведомления!' 
+    });
+    setShowConfirm(true);
   };
 
   useEffect(() => {
@@ -434,17 +630,29 @@ function AppContent() {
               padding: '4px 8px',
               fontSize: 16,
               cursor: 'pointer',
-              color: updateStatus.includes('Найдена') || updateStatus.includes('установлено') ? 'var(--accent)' : 'var(--text-secondary)',
+              color: 'var(--text-secondary)',
               transition: 'all 0.2s'
             }}
           >
             🔄
           </button>
-          {updateStatus && (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {updateStatus}
-            </span>
-          )}
+          <button
+            className="update-btn"
+            onClick={handleTestUpdate}
+            title="Тест обновления (эмуляция)"
+            style={{
+              background: 'none',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 4,
+              padding: '4px 8px',
+              fontSize: 16,
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              transition: 'all 0.2s'
+            }}
+          >
+            🧪
+          </button>
           <ThemeToggle />
           <button className="settings-btn" onClick={() => setSettingsOpen(true)} title="Настройки">⚙️</button>
         </div>
@@ -528,6 +736,14 @@ function AppContent() {
         resetToDefaults={resetToDefaults}
         appVersion={appVersion}
       />
+
+      <ConfirmDialog
+        isOpen={showConfirm}
+        title="Доступно обновление"
+        message={updateInfo ? `Версия ${updateInfo.version}\n\n${updateInfo.body || 'Нет описания'}` : ''}
+        onConfirm={handleConfirmInstall}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   );
 }
@@ -535,7 +751,9 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </ThemeProvider>
   );
 }
