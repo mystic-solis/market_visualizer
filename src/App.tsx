@@ -319,6 +319,10 @@ function AppContent() {
         }
       } else {
         setUpdateStatus('Обновлений не найдено');
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          setUpdateStatus(prev => prev === 'Обновлений не найдено' ? '' : prev);
+        }, 5000);
       }
     } catch (error) {
       const errorMessage = String(error);
@@ -331,6 +335,10 @@ function AppContent() {
         errorMessage.includes('latest')
       ) {
         setUpdateStatus('Обновлений не найдено');
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          setUpdateStatus(prev => prev === 'Обновлений не найдено' ? '' : prev);
+        }, 5000);
       } else {
         setUpdateStatus(`Ошибка: ${errorMessage.substring(0, 80)}`);
         // Log full error to file
