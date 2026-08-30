@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
+import { check } from '@tauri-apps/plugin-updater';
 import TimelineVisualizer from './components/TimelineVisualizer';
 import { ThemeProvider, useTheme } from './ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
@@ -53,7 +55,8 @@ function SettingsModal({
   setDataSource, 
   colors, 
   updateColor, 
-  resetToDefaults 
+  resetToDefaults,
+  appVersion
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
@@ -62,6 +65,7 @@ function SettingsModal({
   colors: any;
   updateColor: (key: string, value: string) => void;
   resetToDefaults: () => void;
+  appVersion: string;
 }) {
   const [activeTab, setActiveTab] = useState<'data' | 'general' | 'chart' | 'about'>('data');
   
@@ -211,7 +215,7 @@ function SettingsModal({
             <label>О приложении:</label>
             <div className="about-info">
               <p><strong>Market Visualizer</strong></p>
-              <p>Версия: 0.1.16</p>
+              <p>Версия: {appVersion}</p>
               <p>Платформа: Tauri + React + D3.js</p>
               <p>Дата сборки: {new Date().toLocaleDateString()}</p>
             </div>
@@ -278,6 +282,56 @@ function AppContent() {
   const [brushDomain] = useState<[Date, Date] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { colors, updateColor, resetToDefaults } = useTheme();
+  const [updateStatus, setUpdateStatus] = useState<string>('');
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>('...');
+
+  useEffect(() => {
+    getVersion().then(v => setAppVersion(v)).catch(() => setAppVersion('unknown'));
+  }, []);
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdate(true);
+    setUpdateStatus('Проверка обновлений...');
+    try {
+      const update = await check();
+      if (update) {
+        setUpdateStatus(`Найдена версия ${update.version}`);
+        const shouldInstall = window.confirm(
+          `Новая версия ${update.version} доступна!\n\nЗаметки:\n${update.body || 'Нет описания'}\n\nУстановить сейчас?`
+        );
+        if (shouldInstall) {
+          setUpdateStatus('Загрузка...');
+          await update.downloadAndInstall((event) => {
+            switch (event.event) {
+              case 'Started':
+                setUpdateStatus(`Загрузка: ${event.data.contentLength} байт`);
+                break;
+              case 'Progress':
+                setUpdateStatus(`Загружено: ${event.data.chunkLength} байт`);
+                break;
+              case 'Finished':
+                setUpdateStatus('Установка...');
+                break;
+            }
+          });
+          setUpdateStatus('Обновление установлено! Перезапустите приложение.');
+        }
+      } else {
+        setUpdateStatus('Обновлений не найдено');
+      }
+    } catch (error) {
+      // 404 means no updates available - this is normal
+      const errorMessage = String(error);
+      if (errorMessage.includes('404') || errorMessage.includes('No updates')) {
+        setUpdateStatus('Обновлений не найдено');
+      } else {
+        setUpdateStatus(`Ошибка: ${errorMessage.substring(0, 50)}`);
+      }
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   useEffect(() => {
     loadTestData();
@@ -352,6 +406,29 @@ function AppContent() {
             <span>Коридоров: <span className="filtered-count">{filteredCorridors}</span><span className="total-count">/{totalCorridors}</span></span>
             <span>Сделок: <span className="filtered-count">{filteredDeals}</span><span className="total-count">/{totalDeals}</span></span>
           </div>
+          <button
+            className="update-btn"
+            onClick={handleCheckForUpdates}
+            disabled={isCheckingUpdate}
+            title="Проверить обновления"
+            style={{
+              background: 'none',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 4,
+              padding: '4px 8px',
+              fontSize: 16,
+              cursor: 'pointer',
+              color: updateStatus.includes('Найдена') || updateStatus.includes('установлено') ? 'var(--accent)' : 'var(--text-secondary)',
+              transition: 'all 0.2s'
+            }}
+          >
+            🔄
+          </button>
+          {updateStatus && (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {updateStatus}
+            </span>
+          )}
           <ThemeToggle />
           <button className="settings-btn" onClick={() => setSettingsOpen(true)} title="Настройки">⚙️</button>
         </div>
@@ -433,6 +510,7 @@ function AppContent() {
         colors={colors}
         updateColor={updateColor}
         resetToDefaults={resetToDefaults}
+        appVersion={appVersion}
       />
     </div>
   );

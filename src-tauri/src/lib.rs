@@ -216,6 +216,7 @@ pub fn run() {
         .setup(|_app| {
             Ok(())
         })
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             load_timeline_data_from_json,
             generate_test_timeline_data,
