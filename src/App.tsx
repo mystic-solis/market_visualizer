@@ -333,6 +333,8 @@ function AppContent() {
         setUpdateStatus('Обновлений не найдено');
       } else {
         setUpdateStatus(`Ошибка: ${errorMessage.substring(0, 80)}`);
+        // Log full error to file
+        invoke('append_to_log', { message: `Update error: ${errorMessage}` }).catch(() => {});
       }
     } finally {
       setIsCheckingUpdate(false);

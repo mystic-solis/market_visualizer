@@ -5,6 +5,26 @@ mod parser;
 use crate::models::{DataSourceConfig, LogEvent, ParserConfig, TimelineData};
 use chrono::{DateTime, Utc};
 use std::fs;
+use std::io::Write;
+
+#[tauri::command]
+fn append_to_log(message: String) -> Result<(), String> {
+    let log_path = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current dir: {}", e))?
+        .join("update-errors.log");
+    
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .map_err(|e| format!("Failed to open log file: {}", e))?;
+    
+    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+    writeln!(file, "[{}] {}", timestamp, message)
+        .map_err(|e| format!("Failed to write to log: {}", e))?;
+    
+    Ok(())
+}
 
 // Функция для парсинга данных из JSON файла (для удобства разработки и тестирования)
 #[tauri::command]
@@ -220,6 +240,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_timeline_data_from_json,
             generate_test_timeline_data,
+            append_to_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
